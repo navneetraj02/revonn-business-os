@@ -1,17 +1,19 @@
 import { useState, useRef, useEffect } from 'react';
-import { X, Send, Mic, MicOff, Sparkles } from 'lucide-react';
+import { X, Send, Mic, MicOff, Sparkles, Loader2 } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
 import { useAppStore } from '@/store/app-store';
-import { aiMock } from '@/lib/integration-stubs';
+import { generateAIResponse, detectLanguage } from '@/lib/ai-assistant';
 import type { AIMessage } from '@/types';
 import { cn } from '@/lib/utils';
 
 export function AIAssistant() {
+  const navigate = useNavigate();
   const { isAIOpen, setIsAIOpen } = useAppStore();
   const [messages, setMessages] = useState<AIMessage[]>([
     {
       id: '1',
       role: 'assistant',
-      content: "Hi! I'm your Revonn Assistant. I can help you with:\n\n• Check stock levels\n• View sales & profit reports\n• Create bills\n• Generate marketing messages\n• Suggest items to reorder\n\nHow can I help you today?",
+      content: "Hi! I'm your Revonn Assistant. 👋\n\nMain aapki madad kar sakta hoon:\n\n• Stock check karna\n• Sales & profit reports\n• Bills banana\n• Marketing messages\n• Customer history\n• Staff attendance\n\nPuchiye, kya jaanna chahte hain?",
       timestamp: new Date()
     }
   ]);
@@ -46,22 +48,38 @@ export function AIAssistant() {
     setIsLoading(true);
 
     try {
-      const response = await aiMock.chat(input.trim());
+      const response = await generateAIResponse(input.trim());
       
       const assistantMessage: AIMessage = {
         id: (Date.now() + 1).toString(),
         role: 'assistant',
         content: response.response,
         timestamp: new Date(),
-        action: response.action
+        action: response.action as AIMessage['action']
       };
 
       setMessages(prev => [...prev, assistantMessage]);
+
+      // Handle navigation actions
+      if (response.action?.type === 'create_bill') {
+        setTimeout(() => {
+          setIsAIOpen(false);
+          navigate('/billing');
+        }, 1500);
+      } else if (response.action?.type === 'navigate') {
+        setTimeout(() => {
+          setIsAIOpen(false);
+          navigate(response.action?.data?.path || '/');
+        }, 1500);
+      }
     } catch (error) {
+      const lang = detectLanguage(input);
       const errorMessage: AIMessage = {
         id: (Date.now() + 1).toString(),
         role: 'assistant',
-        content: "Sorry, I encountered an error. Please try again.",
+        content: lang === 'hindi' 
+          ? "Maaf kijiye, kuch problem hui. Dobara try karein."
+          : "Sorry, I encountered an error. Please try again.",
         timestamp: new Date()
       };
       setMessages(prev => [...prev, errorMessage]);
@@ -77,6 +95,15 @@ export function AIAssistant() {
     }
   };
 
+  // Quick action suggestions based on language
+  const quickActions = [
+    { en: 'Sales today?', hi: 'Aaj ki sale?' },
+    { en: 'Low stock items', hi: 'Low stock' },
+    { en: 'Create bill', hi: 'Bill banao' },
+    { en: "Today's profit", hi: 'Aaj ka profit' },
+    { en: 'Marketing message', hi: 'WhatsApp message' }
+  ];
+
   if (!isAIOpen) return null;
 
   return (
@@ -90,7 +117,7 @@ export function AIAssistant() {
             </div>
             <div>
               <h2 className="font-semibold text-foreground">Revonn Assistant</h2>
-              <p className="text-xs text-muted-foreground">AI-powered help</p>
+              <p className="text-xs text-muted-foreground">AI-powered • Hindi/English</p>
             </div>
           </div>
           <button
@@ -114,22 +141,19 @@ export function AIAssistant() {
               <div
                 className={cn(
                   message.role === 'user' ? 'user-bubble' : 'ai-bubble',
-                  'animate-scale-in'
+                  'animate-scale-in max-w-[85%]'
                 )}
               >
-                <p className="text-sm whitespace-pre-wrap">{message.content}</p>
+                <p className="text-sm whitespace-pre-wrap leading-relaxed">{message.content}</p>
               </div>
             </div>
           ))}
           
           {isLoading && (
             <div className="flex justify-start">
-              <div className="ai-bubble">
-                <div className="flex gap-1">
-                  <span className="w-2 h-2 rounded-full bg-muted-foreground animate-bounce" style={{ animationDelay: '0ms' }} />
-                  <span className="w-2 h-2 rounded-full bg-muted-foreground animate-bounce" style={{ animationDelay: '150ms' }} />
-                  <span className="w-2 h-2 rounded-full bg-muted-foreground animate-bounce" style={{ animationDelay: '300ms' }} />
-                </div>
+              <div className="ai-bubble flex items-center gap-2">
+                <Loader2 className="w-4 h-4 animate-spin" />
+                <span className="text-sm text-muted-foreground">Thinking...</span>
               </div>
             </div>
           )}
@@ -138,17 +162,17 @@ export function AIAssistant() {
         </div>
 
         {/* Quick Actions */}
-        <div className="px-4 py-2 flex gap-2 overflow-x-auto">
-          {['Sales today?', 'Low stock items', 'Create bill', 'Marketing message'].map((action) => (
+        <div className="px-4 py-2 flex gap-2 overflow-x-auto scrollbar-hide">
+          {quickActions.map((action, i) => (
             <button
-              key={action}
+              key={i}
               onClick={() => {
-                setInput(action);
+                setInput(action.hi);
                 inputRef.current?.focus();
               }}
               className="px-3 py-1.5 text-xs font-medium rounded-full bg-secondary text-secondary-foreground whitespace-nowrap hover:bg-secondary/80 transition-colors"
             >
-              {action}
+              {action.hi}
             </button>
           ))}
         </div>
@@ -172,7 +196,7 @@ export function AIAssistant() {
               value={input}
               onChange={(e) => setInput(e.target.value)}
               onKeyDown={(e) => e.key === 'Enter' && handleSend()}
-              placeholder="Ask me anything..."
+              placeholder="Puchiye kuch bhi... / Ask anything..."
               className="input-field flex-1"
             />
             
