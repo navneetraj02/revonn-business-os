@@ -203,7 +203,7 @@ export interface AIMessage {
 }
 
 export interface AIAction {
-  type: 'create_bill' | 'check_stock' | 'generate_message' | 'show_report';
+  type: 'create_bill' | 'check_stock' | 'generate_message' | 'show_report' | 'customer_history' | 'customer_credit' | 'navigate';
   data?: any;
 }
 
