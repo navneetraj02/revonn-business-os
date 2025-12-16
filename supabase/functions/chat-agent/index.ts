@@ -1,4 +1,3 @@
-import "https://deno.land/x/xhr@0.1.0/mod.ts";
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
@@ -7,66 +6,65 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
 
-const openAIApiKey = Deno.env.get("OPENAI_API_KEY");
+const geminiApiKey = Deno.env.get("GEMINI_API_KEY");
 
+// Tool definitions for Gemini function calling
 const tools = [
   {
-    type: "function",
-    function: {
-      name: "addToInventory",
-      description: "Add stock quantity to an existing inventory item. Use when user says things like 'add 50 keyboards to inventory' or 'stock mein 100 jeans add karo'",
-      parameters: {
-        type: "object",
-        properties: {
-          product_name: {
-            type: "string",
-            description: "Name of the product to add stock to"
-          },
-          quantity: {
-            type: "integer",
-            description: "Quantity to add to the inventory"
-          }
+    name: "addToInventory",
+    description: "Add stock quantity to an existing inventory item or create a new item. Use when user says things like 'add 50 keyboards to inventory', 'stock mein 100 jeans add karo', or 'Add 100 Red Pens'",
+    parameters: {
+      type: "object",
+      properties: {
+        product_name: {
+          type: "string",
+          description: "Name of the product to add stock to"
         },
-        required: ["product_name", "quantity"]
-      }
+        quantity: {
+          type: "integer",
+          description: "Quantity to add to the inventory"
+        },
+        price: {
+          type: "number",
+          description: "Price per unit (optional, for new items)"
+        }
+      },
+      required: ["product_name", "quantity"]
     }
   },
   {
-    type: "function",
-    function: {
-      name: "generateInvoice",
-      description: "Create an invoice/bill for a customer with items. Use when user says things like 'create bill for Ramesh 2 blue kurti' or 'bill banao customer Amit ke liye'",
-      parameters: {
-        type: "object",
-        properties: {
-          customer_name: {
-            type: "string",
-            description: "Name of the customer"
-          },
+    name: "generateInvoice",
+    description: "Create an invoice/bill for a customer with items. Use when user says things like 'create bill for Ramesh 2 blue kurti', 'bill banao customer Amit ke liye', or 'Make a bill for John for 5 apples'",
+    parameters: {
+      type: "object",
+      properties: {
+        customer_name: {
+          type: "string",
+          description: "Name of the customer"
+        },
+        items: {
+          type: "array",
+          description: "List of items to bill",
           items: {
-            type: "array",
-            description: "List of items to bill",
-            items: {
-              type: "object",
-              properties: {
-                product_name: { type: "string" },
-                quantity: { type: "integer" }
-              },
-              required: ["product_name", "quantity"]
-            }
-          },
-          payment_mode: {
-            type: "string",
-            enum: ["cash", "card", "online", "due"],
-            description: "Payment method"
-          },
-          amount_paid: {
-            type: "number",
-            description: "Amount paid by customer (0 if due)"
+            type: "object",
+            properties: {
+              product_name: { type: "string" },
+              quantity: { type: "integer" }
+            },
+            required: ["product_name", "quantity"]
           }
         },
-        required: ["customer_name", "items"]
-      }
+        payment_mode: {
+          type: "string",
+          enum: ["cash", "card", "online", "due"],
+          description: "Payment method"
+        },
+        amount_paid: {
+          type: "number",
+          description: "Amount paid by customer (0 if due)"
+        }
+      },
+      required: ["customer_name", "items"]
     }
   }
 ];
@@ -79,8 +77,8 @@ serve(async (req) => {
   try {
     const { messages, userId } = await req.json();
 
-    if (!openAIApiKey) {
-      throw new Error("OPENAI_API_KEY is not configured");
+    if (!geminiApiKey) {
+      throw new Error("GEMINI_API_KEY is not configured");
     }
 
     const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
@@ -91,67 +89,133 @@ serve(async (req) => {
 You help manage stock and create invoices through natural language commands in Hindi or English.
 
 CAPABILITIES:
-1. ADD INVENTORY: When user wants to add stock (e.g., "Add 50 keyboards", "100 jeans stock add karo")
+1. ADD INVENTORY: When user wants to add stock (e.g., "Add 50 keyboards", "100 jeans stock add karo", "Add 100 Red Pens")
    - Use addToInventory function with product_name and quantity
+   - If product doesn't exist, it will be created
    
-2. CREATE INVOICE: When user wants to create a bill (e.g., "Create bill for Ramesh 2 kurtis", "Amit ke liye 500 rupees ka bill banao")
+2. CREATE INVOICE: When user wants to create a bill (e.g., "Create bill for Ramesh 2 kurtis", "Amit ke liye 500 rupees ka bill banao", "Bill John for 2 Apples")
    - Use generateInvoice function with customer_name, items, payment_mode, amount_paid
    
 RULES:
-- Always check product availability before billing
-- Match user's language (Hindi/English)
+- Always respond in the SAME LANGUAGE as the user (Hindi/English)
+- If user speaks Hindi, respond in Hindi
+- If user speaks English, respond in English
 - Keep responses SHORT and helpful
-- If product not found, suggest creating it first
+- For greetings like "Hello", respond friendly without calling functions
+- If product not found during billing, inform user to add it first
 - For payment: cash, card, online, or due (credit)
 
 Current Time: ${new Date().toISOString()}`;
 
-    // First call to get tool decision
-    const response = await fetch("https://api.openai.com/v1/chat/completions", {
-      method: "POST",
-      headers: {
-        Authorization: `Bearer ${openAIApiKey}`,
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        model: "gpt-4o-mini",
-        messages: [{ role: "system", content: systemPrompt }, ...messages],
-        tools: tools,
-        tool_choice: "auto",
-      }),
-    });
+    // Format messages for Gemini
+    const geminiMessages = messages.map((msg: any) => ({
+      role: msg.role === "assistant" ? "model" : "user",
+      parts: [{ text: msg.content }]
+    }));
+
+    // Call Gemini API with function calling
+    const response = await fetch(
+      `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${geminiApiKey}`,
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          contents: [
+            { role: "user", parts: [{ text: systemPrompt }] },
+            { role: "model", parts: [{ text: "I understand. I am Revonn AI, ready to help with inventory and billing." }] },
+            ...geminiMessages
+          ],
+          tools: [{
+            functionDeclarations: tools
+          }],
+          generationConfig: {
+            temperature: 0.7,
+            maxOutputTokens: 1024
+          }
+        })
+      }
+    );
 
     if (!response.ok) {
       const errorText = await response.text();
-      console.error("OpenAI API error:", response.status, errorText);
-      throw new Error(`OpenAI API error: ${response.status}`);
+      console.error("Gemini API error:", response.status, errorText);
+      throw new Error(`Gemini API error: ${response.status}`);
     }
 
     const data = await response.json();
-    const assistantMessage = data.choices[0].message;
+    console.log("Gemini response:", JSON.stringify(data, null, 2));
 
-    // Check if tool was called
-    if (assistantMessage.tool_calls && assistantMessage.tool_calls.length > 0) {
-      const toolCall = assistantMessage.tool_calls[0];
-      const functionName = toolCall.function.name;
-      const args = JSON.parse(toolCall.function.arguments);
+    const candidate = data.candidates?.[0];
+    if (!candidate) {
+      throw new Error("No response from Gemini");
+    }
 
-      console.log(`Tool called: ${functionName}`, args);
+    const content = candidate.content;
+    const parts = content?.parts || [];
+
+    // Check for function call
+    const functionCall = parts.find((p: any) => p.functionCall);
+
+    if (functionCall) {
+      const { name: functionName, args } = functionCall.functionCall;
+      console.log(`Function called: ${functionName}`, args);
 
       let toolResult: any;
 
       if (functionName === "addToInventory") {
-        const { data: result, error } = await supabase.rpc("add_inventory_stock", {
-          p_user_id: userId,
-          p_product_name: args.product_name,
-          p_quantity_to_add: args.quantity,
-        });
+        // First try to find existing product
+        const { data: existingProduct } = await supabase
+          .from("inventory")
+          .select("id, name, quantity")
+          .eq("user_id", userId)
+          .ilike("name", `%${args.product_name}%`)
+          .limit(1)
+          .single();
 
-        if (error) {
-          console.error("RPC error:", error);
-          toolResult = { success: false, error: error.message };
+        if (existingProduct) {
+          // Update existing product
+          const newQuantity = (existingProduct.quantity || 0) + args.quantity;
+          const { error } = await supabase
+            .from("inventory")
+            .update({ quantity: newQuantity, updated_at: new Date().toISOString() })
+            .eq("id", existingProduct.id);
+
+          if (error) {
+            toolResult = { success: false, error: error.message };
+          } else {
+            toolResult = {
+              success: true,
+              product_name: existingProduct.name,
+              previous_quantity: existingProduct.quantity,
+              added: args.quantity,
+              new_quantity: newQuantity
+            };
+          }
         } else {
-          toolResult = result;
+          // Create new product
+          const { data: newProduct, error } = await supabase
+            .from("inventory")
+            .insert({
+              user_id: userId,
+              name: args.product_name,
+              quantity: args.quantity,
+              price: args.price || 0
+            })
+            .select()
+            .single();
+
+          if (error) {
+            toolResult = { success: false, error: error.message };
+          } else {
+            toolResult = {
+              success: true,
+              product_name: args.product_name,
+              previous_quantity: 0,
+              added: args.quantity,
+              new_quantity: args.quantity,
+              created_new: true
+            };
+          }
         }
       } else if (functionName === "generateInvoice") {
         const { data: result, error } = await supabase.rpc("create_invoice_transaction", {
@@ -171,29 +235,40 @@ Current Time: ${new Date().toISOString()}`;
       }
 
       // Get final response with tool result
-      const finalResponse = await fetch("https://api.openai.com/v1/chat/completions", {
-        method: "POST",
-        headers: {
-          Authorization: `Bearer ${openAIApiKey}`,
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          model: "gpt-4o-mini",
-          messages: [
-            { role: "system", content: systemPrompt },
-            ...messages,
-            assistantMessage,
-            {
-              role: "tool",
-              tool_call_id: toolCall.id,
-              content: JSON.stringify(toolResult),
-            },
-          ],
-        }),
-      });
+      const finalResponse = await fetch(
+        `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${geminiApiKey}`,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            contents: [
+              { role: "user", parts: [{ text: systemPrompt }] },
+              { role: "model", parts: [{ text: "I understand." }] },
+              ...geminiMessages,
+              { role: "model", parts: [functionCall] },
+              {
+                role: "user",
+                parts: [{
+                  functionResponse: {
+                    name: functionName,
+                    response: toolResult
+                  }
+                }]
+              }
+            ],
+            generationConfig: {
+              temperature: 0.7,
+              maxOutputTokens: 512
+            }
+          })
+        }
+      );
 
       const finalData = await finalResponse.json();
-      const finalMessage = finalData.choices[0].message.content;
+      const finalMessage = finalData.candidates?.[0]?.content?.parts?.[0]?.text || 
+        (toolResult.success 
+          ? `Done! ${functionName === "addToInventory" ? `Added ${args.quantity} ${args.product_name}` : `Bill created for ${args.customer_name}`}`
+          : `Error: ${toolResult.error}`);
 
       return new Response(
         JSON.stringify({
@@ -205,10 +280,12 @@ Current Time: ${new Date().toISOString()}`;
       );
     }
 
-    // No tool called - return direct response
+    // No function called - return text response
+    const textResponse = parts.find((p: any) => p.text)?.text || "I'm here to help with inventory and billing.";
+
     return new Response(
       JSON.stringify({
-        message: assistantMessage.content,
+        message: textResponse,
         action: null,
         result: null,
       }),

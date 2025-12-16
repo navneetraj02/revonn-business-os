@@ -53,6 +53,36 @@ export type Database = {
         }
         Relationships: []
       }
+      demo_usage: {
+        Row: {
+          bills_created: number
+          created_at: string
+          customers_added: number
+          id: string
+          inventory_items: number
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          bills_created?: number
+          created_at?: string
+          customers_added?: number
+          id?: string
+          inventory_items?: number
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          bills_created?: number
+          created_at?: string
+          customers_added?: number
+          id?: string
+          inventory_items?: number
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       inventory: {
         Row: {
           category: string | null
@@ -333,6 +363,45 @@ export type Database = {
           },
         ]
       }
+      user_subscriptions: {
+        Row: {
+          ai_addon: boolean
+          billing_cycle: string | null
+          created_at: string
+          expires_at: string | null
+          id: string
+          is_active: boolean
+          plan_type: string
+          started_at: string | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          ai_addon?: boolean
+          billing_cycle?: string | null
+          created_at?: string
+          expires_at?: string | null
+          id?: string
+          is_active?: boolean
+          plan_type?: string
+          started_at?: string | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          ai_addon?: boolean
+          billing_cycle?: string | null
+          created_at?: string
+          expires_at?: string | null
+          id?: string
+          is_active?: boolean
+          plan_type?: string
+          started_at?: string | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
@@ -346,6 +415,10 @@ export type Database = {
         }
         Returns: Json
       }
+      check_demo_limit: {
+        Args: { p_limit_type: string; p_user_id: string }
+        Returns: Json
+      }
       create_invoice_transaction: {
         Args: {
           p_amount_paid?: number
@@ -355,6 +428,10 @@ export type Database = {
           p_user_id: string
         }
         Returns: Json
+      }
+      increment_demo_usage: {
+        Args: { p_limit_type: string; p_user_id: string }
+        Returns: undefined
       }
     }
     Enums: {
