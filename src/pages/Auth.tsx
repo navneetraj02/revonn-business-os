@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
-import { Phone, Store, FileText, Eye, EyeOff, Loader2 } from 'lucide-react';
+import { Phone, Store, FileText, Eye, EyeOff, Loader2, User, Briefcase } from 'lucide-react';
 import revonnLogo from '@/assets/revonn-logo.jpeg';
 
 export default function Auth() {
@@ -15,6 +15,8 @@ export default function Auth() {
     phone: '',
     password: '',
     shopName: '',
+    ownerName: '',
+    businessType: 'retail' as 'retail' | 'service',
     gstin: ''
   });
 
@@ -71,6 +73,11 @@ export default function Auth() {
           return;
         }
 
+        if (!formData.ownerName) {
+          toast.error('Please enter owner name');
+          return;
+        }
+
         const { error } = await supabase.auth.signUp({
           email,
           password: formData.password,
@@ -78,6 +85,8 @@ export default function Auth() {
             emailRedirectTo: `${window.location.origin}/`,
             data: {
               shop_name: formData.shopName,
+              owner_name: formData.ownerName,
+              business_type: formData.businessType,
               gstin: formData.gstin,
               phone: formData.phone
             }
@@ -94,7 +103,7 @@ export default function Auth() {
           return;
         }
 
-        toast.success('Account created! Redirecting...');
+        toast.success('Account created! Welcome to Revonn Demo Mode.');
       }
     } catch (error) {
       console.error('Auth error:', error);
@@ -107,8 +116,8 @@ export default function Auth() {
   return (
     <div className="min-h-screen bg-background flex flex-col">
       {/* Header with logo */}
-      <div className="flex-1 flex flex-col items-center justify-center px-6 py-12">
-        <div className="w-full max-w-sm space-y-8">
+      <div className="flex-1 flex flex-col items-center justify-center px-6 py-8">
+        <div className="w-full max-w-sm space-y-6">
           {/* Logo */}
           <div className="text-center">
             <div className="w-20 h-20 rounded-2xl overflow-hidden mx-auto mb-4 shadow-lg">
@@ -119,10 +128,10 @@ export default function Auth() {
           </div>
 
           {/* Form */}
-          <form onSubmit={handleSubmit} className="space-y-5">
+          <form onSubmit={handleSubmit} className="space-y-4">
             {/* Phone Number */}
             <div>
-              <label className="block text-sm font-medium text-foreground mb-2">
+              <label className="block text-sm font-medium text-foreground mb-1.5">
                 Mobile Number
               </label>
               <div className="relative">
@@ -138,11 +147,30 @@ export default function Auth() {
               </div>
             </div>
 
+            {/* Owner Name - Only for signup */}
+            {!isLogin && (
+              <div>
+                <label className="block text-sm font-medium text-foreground mb-1.5">
+                  Owner Name
+                </label>
+                <div className="relative">
+                  <User className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-muted-foreground" />
+                  <input
+                    type="text"
+                    value={formData.ownerName}
+                    onChange={(e) => setFormData({ ...formData, ownerName: e.target.value })}
+                    placeholder="Your name"
+                    className="input-field pl-12"
+                  />
+                </div>
+              </div>
+            )}
+
             {/* Shop Name - Only for signup */}
             {!isLogin && (
               <div>
-                <label className="block text-sm font-medium text-foreground mb-2">
-                  Shop Name
+                <label className="block text-sm font-medium text-foreground mb-1.5">
+                  Business Name
                 </label>
                 <div className="relative">
                   <Store className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-muted-foreground" />
@@ -150,9 +178,29 @@ export default function Auth() {
                     type="text"
                     value={formData.shopName}
                     onChange={(e) => setFormData({ ...formData, shopName: e.target.value })}
-                    placeholder="Your shop name"
+                    placeholder="Your shop/business name"
                     className="input-field pl-12"
                   />
+                </div>
+              </div>
+            )}
+
+            {/* Business Type - Only for signup */}
+            {!isLogin && (
+              <div>
+                <label className="block text-sm font-medium text-foreground mb-1.5">
+                  Business Type
+                </label>
+                <div className="relative">
+                  <Briefcase className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-muted-foreground" />
+                  <select
+                    value={formData.businessType}
+                    onChange={(e) => setFormData({ ...formData, businessType: e.target.value as 'retail' | 'service' })}
+                    className="input-field pl-12 appearance-none"
+                  >
+                    <option value="retail">Retail / Shop</option>
+                    <option value="service">Service Business</option>
+                  </select>
                 </div>
               </div>
             )}
@@ -160,8 +208,8 @@ export default function Auth() {
             {/* GSTIN - Only for signup, optional */}
             {!isLogin && (
               <div>
-                <label className="block text-sm font-medium text-foreground mb-2">
-                  GSTIN <span className="text-muted-foreground">(Optional)</span>
+                <label className="block text-sm font-medium text-foreground mb-1.5">
+                  GSTIN <span className="text-muted-foreground text-xs">(Optional)</span>
                 </label>
                 <div className="relative">
                   <FileText className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-muted-foreground" />
@@ -179,7 +227,7 @@ export default function Auth() {
 
             {/* Password */}
             <div>
-              <label className="block text-sm font-medium text-foreground mb-2">
+              <label className="block text-sm font-medium text-foreground mb-1.5">
                 Password
               </label>
               <div className="relative">
@@ -213,9 +261,16 @@ export default function Auth() {
                   {isLogin ? 'Signing in...' : 'Creating account...'}
                 </>
               ) : (
-                isLogin ? 'Sign In' : 'Create Account'
+                isLogin ? 'Sign In' : 'Create Free Account'
               )}
             </button>
+
+            {/* Demo Info */}
+            {!isLogin && (
+              <p className="text-xs text-center text-muted-foreground">
+                Start with free demo mode. No payment required.
+              </p>
+            )}
           </form>
 
           {/* Toggle Login/Signup */}

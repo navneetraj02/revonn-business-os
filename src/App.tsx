@@ -5,6 +5,7 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { supabase } from '@/integrations/supabase/client';
+import { SubscriptionProvider } from '@/contexts/SubscriptionContext';
 import Splash from "./pages/Splash";
 import Auth from "./pages/Auth";
 import Dashboard from "./pages/Dashboard";
@@ -25,6 +26,7 @@ import Help from "./pages/Help";
 import Billing from "./pages/Billing";
 import InvoiceDetail from "./pages/InvoiceDetail";
 import Staff from "./pages/Staff";
+import SubscriptionPlans from "./pages/SubscriptionPlans";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -105,6 +107,7 @@ function AppContent() {
       <Route path="/billing" element={isAuthenticated ? <Billing /> : <Navigate to="/auth" replace />} />
       <Route path="/billing/new" element={isAuthenticated ? <Billing /> : <Navigate to="/auth" replace />} />
       <Route path="/staff" element={isAuthenticated ? <Staff /> : <Navigate to="/auth" replace />} />
+      <Route path="/subscription" element={isAuthenticated ? <SubscriptionPlans /> : <Navigate to="/auth" replace />} />
       <Route path="*" element={<NotFound />} />
     </Routes>
   );
@@ -113,11 +116,13 @@ function AppContent() {
 const App = () => (
   <QueryClientProvider client={queryClient}>
     <TooltipProvider>
-      <Toaster />
-      <Sonner />
-      <BrowserRouter>
-        <AppContent />
-      </BrowserRouter>
+      <SubscriptionProvider>
+        <Toaster />
+        <Sonner />
+        <BrowserRouter>
+          <AppContent />
+        </BrowserRouter>
+      </SubscriptionProvider>
     </TooltipProvider>
   </QueryClientProvider>
 );
