@@ -291,15 +291,15 @@ export default function Auth() {
           By continuing, you agree to our
         </p>
         <div className="flex items-center justify-center gap-2 flex-wrap text-xs">
-          <Link to="/policies/terms" className="text-primary hover:underline">
+          <Link to="/policy/terms" className="text-primary hover:underline">
             Terms & Conditions
           </Link>
           <span className="text-muted-foreground">•</span>
-          <Link to="/policies/privacy" className="text-primary hover:underline">
+          <Link to="/policy/privacy" className="text-primary hover:underline">
             Privacy Policy
           </Link>
           <span className="text-muted-foreground">•</span>
-          <Link to="/policies/refund" className="text-primary hover:underline">
+          <Link to="/policy/refund" className="text-primary hover:underline">
             Refund Policy
           </Link>
         </div>
