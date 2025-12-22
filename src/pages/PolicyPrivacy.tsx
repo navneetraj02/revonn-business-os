@@ -66,7 +66,7 @@ export default function PolicyPrivacy() {
           <h2 className="text-lg font-semibold mt-6 mb-3">7. Grievance Officer</h2>
           <div className="bg-secondary/50 p-4 rounded-lg mt-2">
             <p><strong>Name:</strong>Name: Jai Deep</p>
-            <p><strong>Designation:</strong>Designation: CoFounder & COO</p>
+            <p><strong>Designation:</strong>Designation: Co-Founder & COO</p>
             <p><strong>Business:</strong> Revonn</p>
             <p><strong>Email:</strong> <a href="mailto:support@revonn.in" className="text-primary">support@revonn.in</a></p>
             <p><strong>Location:</strong> Ranchi, Jharkhand, India</p>
