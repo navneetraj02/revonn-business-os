@@ -2,20 +2,16 @@ import { useNavigate } from 'react-router-dom';
 import { ChevronLeft } from 'lucide-react';
 import { AppLayout } from '@/components/layout/AppLayout';
 import { useLanguage } from '@/contexts/LanguageContext';
-
 export default function PolicyPrivacy() {
   const navigate = useNavigate();
-  const { t } = useLanguage();
-
-  return (
-    <AppLayout title={t('privacy_policy')} hideNav>
+  const {
+    t
+  } = useLanguage();
+  return <AppLayout title={t('privacy_policy')} hideNav>
       <div className="px-4 py-4 space-y-6">
         {/* Header */}
         <div className="flex items-center gap-3">
-          <button 
-            onClick={() => navigate(-1)}
-            className="p-2 rounded-xl bg-secondary"
-          >
+          <button onClick={() => navigate(-1)} className="p-2 rounded-xl bg-secondary">
             <ChevronLeft className="w-5 h-5" />
           </button>
           <h1 className="text-xl font-bold text-foreground">{t('privacy_policy')}</h1>
@@ -69,8 +65,8 @@ export default function PolicyPrivacy() {
 
           <h2 className="text-lg font-semibold mt-6 mb-3">7. Grievance Officer</h2>
           <div className="bg-secondary/50 p-4 rounded-lg mt-2">
-            <p><strong>Name:</strong> Navneet Raj</p>
-            <p><strong>Designation:</strong> Founder & CEO</p>
+            <p><strong>Name:</strong>Name: Jai Deep</p>
+            <p><strong>Designation:</strong>Designation: CoFounder & COO</p>
             <p><strong>Business:</strong> Revonn</p>
             <p><strong>Email:</strong> <a href="mailto:support@revonn.in" className="text-primary">support@revonn.in</a></p>
             <p><strong>Location:</strong> Ranchi, Jharkhand, India</p>
@@ -78,6 +74,5 @@ export default function PolicyPrivacy() {
           </div>
         </div>
       </div>
-    </AppLayout>
-  );
+    </AppLayout>;
 }
