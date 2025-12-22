@@ -2,20 +2,16 @@ import { useNavigate } from 'react-router-dom';
 import { ChevronLeft } from 'lucide-react';
 import { AppLayout } from '@/components/layout/AppLayout';
 import { useLanguage } from '@/contexts/LanguageContext';
-
 export default function PolicyTerms() {
   const navigate = useNavigate();
-  const { t } = useLanguage();
-
-  return (
-    <AppLayout title={t('terms_conditions')} hideNav>
+  const {
+    t
+  } = useLanguage();
+  return <AppLayout title={t('terms_conditions')} hideNav>
       <div className="px-4 py-4 space-y-6">
         {/* Header */}
         <div className="flex items-center gap-3">
-          <button 
-            onClick={() => navigate(-1)}
-            className="p-2 rounded-xl bg-secondary"
-          >
+          <button onClick={() => navigate(-1)} className="p-2 rounded-xl bg-secondary">
             <ChevronLeft className="w-5 h-5" />
           </button>
           <h1 className="text-xl font-bold text-foreground">{t('terms_conditions')}</h1>
@@ -78,10 +74,9 @@ export default function PolicyTerms() {
 
           <h2 className="text-lg font-semibold mt-6 mb-3">9. Contact</h2>
           <p>
-            For queries, contact us at: <a href="mailto:support@revonn.in" className="text-primary">support@revonn.in</a>
+            For queries, contact us at: <a href="mailto:support@revonn.in" className="text-primary">support@revonn.in / +91 6201356269</a>
           </p>
         </div>
       </div>
-    </AppLayout>
-  );
+    </AppLayout>;
 }
