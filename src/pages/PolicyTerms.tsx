@@ -74,7 +74,7 @@ export default function PolicyTerms() {
 
           <h2 className="text-lg font-semibold mt-6 mb-3">9. Contact</h2>
           <p>
-            For queries, contact us at: <a href="mailto:support@revonn.in" className="text-primary">support@revonn.in / +91 6201356269</a>
+            For queries, contact us at: <a href="mailto:support@revonn.in" className="text-primary">support@revonn.com / +91 6201356269</a>
           </p>
         </div>
       </div>
