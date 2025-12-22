@@ -43,15 +43,15 @@ export default function SettingsPrivacy() {
   const policyLinks = [
     {
       title: language === 'hi' ? 'नियम और शर्तें' : 'Terms & Conditions',
-      path: '/policies/terms'
+      path: '/policy/terms'
     },
     {
       title: language === 'hi' ? 'रिफंड और रद्दीकरण नीति' : 'Refund & Cancellation Policy',
-      path: '/policies/refund'
+      path: '/policy/refund'
     },
     {
       title: language === 'hi' ? 'गोपनीयता नीति' : 'Privacy Policy',
-      path: '/policies/privacy'
+      path: '/policy/privacy'
     }
   ];
 
