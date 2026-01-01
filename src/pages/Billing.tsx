@@ -40,8 +40,10 @@ interface BillItem {
   unitPrice: number;
   taxRate: number;
   total: number;
+  taxAmount: number;
   size?: string;
   color?: string;
+  category?: string;
 }
 
 interface Customer {
@@ -58,6 +60,7 @@ interface InventoryItem {
   gst_rate: number;
   size?: string;
   color?: string;
+  category?: string;
 }
 
 type PaymentMode = 'cash' | 'card' | 'online' | 'due';
@@ -119,22 +122,77 @@ export default function Billing() {
     }
   };
 
+  // GST rate lookup based on Indian law
+  const getGSTRate = (itemName: string, price: number, category?: string): number => {
+    const lowerName = itemName.toLowerCase();
+    const lowerCategory = (category || '').toLowerCase();
+    
+    // Clothing & Footwear based on price threshold
+    if (lowerCategory.includes('cloth') || lowerCategory.includes('apparel') || 
+        lowerName.includes('shirt') || lowerName.includes('pant') || lowerName.includes('kurti') ||
+        lowerName.includes('saree') || lowerName.includes('dress') || lowerName.includes('jeans') ||
+        lowerName.includes('top') || lowerName.includes('t-shirt')) {
+      return price <= 1000 ? 5 : 12;
+    }
+    
+    // Footwear
+    if (lowerCategory.includes('footwear') || lowerName.includes('shoe') || 
+        lowerName.includes('sandal') || lowerName.includes('chappal') || lowerName.includes('slipper')) {
+      return price <= 1000 ? 5 : 18;
+    }
+    
+    // Electronics
+    if (lowerCategory.includes('electronic') || lowerName.includes('phone') || 
+        lowerName.includes('laptop') || lowerName.includes('charger') || lowerName.includes('cable') ||
+        lowerName.includes('earphone') || lowerName.includes('headphone')) {
+      return 18;
+    }
+    
+    // Food items (packaged)
+    if (lowerCategory.includes('food') || lowerCategory.includes('grocery') ||
+        lowerName.includes('biscuit') || lowerName.includes('namkeen') || lowerName.includes('snack')) {
+      return 5;
+    }
+    
+    // Cosmetics
+    if (lowerCategory.includes('cosmetic') || lowerCategory.includes('beauty') ||
+        lowerName.includes('cream') || lowerName.includes('shampoo') || lowerName.includes('soap')) {
+      return 18;
+    }
+    
+    // Furniture
+    if (lowerCategory.includes('furniture') || lowerName.includes('chair') || 
+        lowerName.includes('table') || lowerName.includes('bed')) {
+      return 18;
+    }
+    
+    // Default GST rate
+    return 18;
+  };
+
   const addItem = (item: InventoryItem) => {
     const existingIndex = billItems.findIndex(bi => bi.itemId === item.id);
 
     if (existingIndex >= 0) {
       updateQuantity(existingIndex, billItems[existingIndex].quantity + 1);
     } else {
+      const itemPrice = Number(item.price);
+      const gstRate = item.gst_rate || getGSTRate(item.name, itemPrice, item.category);
+      const baseTotal = itemPrice;
+      const taxAmount = (baseTotal * gstRate) / 100;
+      
       const newItem: BillItem = {
         id: uuidv4(),
         itemId: item.id,
         itemName: item.name,
         quantity: 1,
-        unitPrice: Number(item.price),
-        taxRate: Number(item.gst_rate) || 18,
-        total: Number(item.price),
+        unitPrice: itemPrice,
+        taxRate: gstRate,
+        total: baseTotal,
+        taxAmount: taxAmount,
         size: item.size,
-        color: item.color
+        color: item.color,
+        category: item.category
       };
       setBillItems([...billItems, newItem]);
     }
@@ -147,11 +205,14 @@ export default function Billing() {
       removeItem(index);
       return;
     }
-    setBillItems(prev => prev.map((item, i) => 
-      i === index 
-        ? { ...item, quantity: newQty, total: item.unitPrice * newQty }
-        : item
-    ));
+    setBillItems(prev => prev.map((item, i) => {
+      if (i === index) {
+        const baseTotal = item.unitPrice * newQty;
+        const taxAmount = (baseTotal * item.taxRate) / 100;
+        return { ...item, quantity: newQty, total: baseTotal, taxAmount: taxAmount };
+      }
+      return item;
+    }));
   };
 
   const removeItem = (index: number) => {
@@ -172,13 +233,11 @@ export default function Billing() {
     : discountValue;
   const afterDiscount = subtotal - discountAmount;
   
-  // Calculate tax
-  const taxAmount = billItems.reduce((acc, item) => {
-    const taxableAmount = (item.total / (1 + item.taxRate / 100));
-    return acc + (item.total - taxableAmount);
-  }, 0);
+  // Calculate tax (GST applied on each item)
+  const taxAmount = billItems.reduce((acc, item) => acc + item.taxAmount, 0);
 
-  const grandTotal = afterDiscount;
+  // Grand total includes tax
+  const grandTotal = afterDiscount + taxAmount;
   const dueAmount = paymentMode === 'due' ? grandTotal : Math.max(0, grandTotal - amountPaid);
 
   // Update amount paid when payment mode changes
