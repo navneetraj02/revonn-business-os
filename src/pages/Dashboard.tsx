@@ -110,7 +110,7 @@ export default function Dashboard() {
     { icon: BarChart3, label: 'Finance', path: '/reports', color: 'bg-secondary text-foreground', active: true },
     { icon: UsersIcon, label: 'Customer', path: '/customers', color: 'bg-secondary text-foreground', active: true },
     { icon: FileText, label: 'GST', path: '/gst', color: 'bg-muted text-muted-foreground', active: false, comingSoon: true },
-    { icon: MessageSquare, label: 'Marketing', path: '/marketing', color: 'bg-muted text-muted-foreground', active: false, comingSoon: true },
+    { icon: MessageSquare, label: 'Marketing', path: '/marketing', color: 'bg-secondary text-foreground', active: true },
     { icon: UserCog, label: 'Staff', path: '/staff', color: 'bg-secondary text-foreground', active: true },
   ];
 

@@ -62,25 +62,26 @@ export default function BOMUpload() {
 
     try {
       const extension = file.name.split('.').pop()?.toLowerCase();
-      let content = '';
-      let contentType = 'text';
+      let requestBody: { image?: string; text?: string; mimeType?: string } = {};
       
       if (extension === 'csv' || extension === 'xlsx' || extension === 'xls') {
+        // For spreadsheets, parse and send as text
         const data = await file.arrayBuffer();
         const workbook = XLSX.read(data);
         const firstSheet = workbook.Sheets[workbook.SheetNames[0]];
-        content = XLSX.utils.sheet_to_csv(firstSheet);
-        contentType = 'csv';
-      } else if (file.type.startsWith('image/') || extension === 'pdf') {
-        // For images/PDFs, we'll read as base64 and describe
-        content = await readFileAsText(file);
-        contentType = file.type.startsWith('image/') ? 'image' : 'pdf';
+        const csvContent = XLSX.utils.sheet_to_csv(firstSheet);
+        requestBody = { text: csvContent };
+      } else if (file.type.startsWith('image/')) {
+        // For images, convert to base64 and use vision parsing
+        const base64 = await fileToBase64(file);
+        requestBody = { image: base64, mimeType: file.type };
       } else {
-        content = await file.text();
-        contentType = 'text';
+        // For other files, read as text
+        const textContent = await file.text();
+        requestBody = { text: textContent };
       }
 
-      // Call the parse-bom edge function
+      // Call the bom-parser edge function with real AI parsing
       const { data: { session } } = await supabase.auth.getSession();
       if (!session) {
         toast.error('Please login first');
@@ -88,8 +89,8 @@ export default function BOMUpload() {
         return;
       }
 
-      const response = await supabase.functions.invoke('parse-bom', {
-        body: { content, contentType }
+      const response = await supabase.functions.invoke('bom-parser', {
+        body: requestBody
       });
 
       if (response.error) {
@@ -126,10 +127,15 @@ export default function BOMUpload() {
     }
   };
 
-  const readFileAsText = (file: File): Promise<string> => {
-    return new Promise((resolve) => {
-      // For images, we'll just provide file info since we can't do OCR client-side
-      resolve(`File: ${file.name}, Type: ${file.type}, Size: ${file.size} bytes`);
+  const fileToBase64 = (file: File): Promise<string> => {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.readAsDataURL(file);
+      reader.onload = () => {
+        const result = reader.result as string;
+        resolve(result);
+      };
+      reader.onerror = reject;
     });
   };
 

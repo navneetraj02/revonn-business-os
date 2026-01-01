@@ -292,33 +292,45 @@ export type Database = {
           id: string
           is_active: boolean | null
           join_date: string | null
+          last_login: string | null
           name: string
+          password_hash: string | null
+          permissions: Json | null
           phone: string | null
           role: string | null
           salary: number | null
           user_id: string
+          username: string | null
         }
         Insert: {
           created_at?: string
           id?: string
           is_active?: boolean | null
           join_date?: string | null
+          last_login?: string | null
           name: string
+          password_hash?: string | null
+          permissions?: Json | null
           phone?: string | null
           role?: string | null
           salary?: number | null
           user_id: string
+          username?: string | null
         }
         Update: {
           created_at?: string
           id?: string
           is_active?: boolean | null
           join_date?: string | null
+          last_login?: string | null
           name?: string
+          password_hash?: string | null
+          permissions?: Json | null
           phone?: string | null
           role?: string | null
           salary?: number | null
           user_id?: string
+          username?: string | null
         }
         Relationships: []
       }
