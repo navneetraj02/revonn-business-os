@@ -33,6 +33,7 @@ import Help from "./pages/Help";
 import Billing from "./pages/Billing";
 import InvoiceDetail from "./pages/InvoiceDetail";
 import Staff from "./pages/Staff";
+import Marketing from "./pages/Marketing";
 import SubscriptionPlans from "./pages/SubscriptionPlans";
 import NotFound from "./pages/NotFound";
 
@@ -120,6 +121,7 @@ function AppContent() {
       <Route path="/billing" element={isAuthenticated ? <Billing /> : <Navigate to="/auth" replace />} />
       <Route path="/billing/new" element={isAuthenticated ? <Billing /> : <Navigate to="/auth" replace />} />
       <Route path="/staff" element={isAuthenticated ? <Staff /> : <Navigate to="/auth" replace />} />
+      <Route path="/marketing" element={isAuthenticated ? <Marketing /> : <Navigate to="/auth" replace />} />
       <Route path="/subscription" element={isAuthenticated ? <SubscriptionPlans /> : <Navigate to="/auth" replace />} />
       <Route path="*" element={<NotFound />} />
     </Routes>
