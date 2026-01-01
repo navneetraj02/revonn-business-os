@@ -39,13 +39,17 @@ const tools = [
     type: "function",
     function: {
       name: "generateInvoice",
-      description: "Create an invoice/bill for a customer with items. Use when user says things like 'create bill for Ramesh 2 blue kurti', 'bill banao customer Amit ke liye', or 'Make a bill for John for 5 apples'",
+      description: "Create an invoice/bill for a customer with items. Use when user says things like 'create bill for Ramesh 2 blue kurti', 'bill banao customer Amit ke liye', or 'Make a bill for John for 5 apples'. ALWAYS ask for customer phone if not provided.",
       parameters: {
         type: "object",
         properties: {
           customer_name: {
             type: "string",
             description: "Name of the customer"
+          },
+          customer_phone: {
+            type: "string",
+            description: "10-digit phone number of the customer"
           },
           items: {
             type: "array",
@@ -72,6 +76,29 @@ const tools = [
         required: ["customer_name", "items"]
       }
     }
+  },
+  {
+    type: "function",
+    function: {
+      name: "getBusinessInsights",
+      description: "Get business data like sales, customers, inventory, profit, top selling items. Use when user asks about their business performance, sales, revenue, profit, customers, stock levels etc.",
+      parameters: {
+        type: "object",
+        properties: {
+          insight_type: {
+            type: "string",
+            enum: ["daily_sales", "monthly_sales", "top_products", "low_stock", "customer_count", "revenue", "profit", "all"],
+            description: "Type of business insight requested"
+          },
+          period: {
+            type: "string",
+            enum: ["today", "week", "month", "year"],
+            description: "Time period for the insight"
+          }
+        },
+        required: ["insight_type"]
+      }
+    }
   }
 ];
 
@@ -91,25 +118,83 @@ serve(async (req) => {
     const supabaseKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
     const supabase = createClient(supabaseUrl, supabaseKey);
 
-    const systemPrompt = `You are Revonn AI - an intelligent inventory manager assistant for Indian retail shop owners.
-You help manage stock and create invoices through natural language commands in Hindi or English.
+    // Fetch business data for context
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    
+    const [invoicesRes, inventoryRes, customersRes] = await Promise.all([
+      supabase.from("invoices").select("*").eq("user_id", userId).gte("created_at", today.toISOString()),
+      supabase.from("inventory").select("*").eq("user_id", userId),
+      supabase.from("customers").select("*").eq("user_id", userId)
+    ]);
+
+    const todaysSales = invoicesRes.data?.reduce((sum, inv) => sum + Number(inv.total || 0), 0) || 0;
+    const totalProducts = inventoryRes.data?.length || 0;
+    const lowStockItems = inventoryRes.data?.filter(i => Number(i.quantity) <= 5) || [];
+    const topSelling = inventoryRes.data?.sort((a, b) => (b.sales_count || 0) - (a.sales_count || 0)).slice(0, 5) || [];
+    const totalCustomers = customersRes.data?.length || 0;
+    const invoiceCount = invoicesRes.data?.length || 0;
+
+    const systemPrompt = `You are Revonn AI - an advanced, intelligent business assistant for Indian retail shop owners.
+You help manage stock, create invoices, provide business insights, and give marketing advice in Hindi and English.
+
+YOUR BUSINESS CONTEXT (Real-time Data):
+- Today's Sales: ₹${todaysSales.toLocaleString('en-IN')} from ${invoiceCount} invoices
+- Total Products: ${totalProducts}
+- Low Stock Items: ${lowStockItems.length} (${lowStockItems.slice(0, 3).map(i => i.name).join(', ')})
+- Top Selling: ${topSelling.slice(0, 3).map(i => `${i.name} (${i.sales_count || 0} sold)`).join(', ')}
+- Total Customers: ${totalCustomers}
 
 CAPABILITIES:
-1. ADD INVENTORY: When user wants to add stock (e.g., "Add 50 keyboards", "100 jeans stock add karo", "Add 100 Red Pens")
-   - Use addToInventory function with product_name and quantity
-   - If product doesn't exist, it will be created
+1. ADD INVENTORY: "Add 50 keyboards", "100 jeans stock add karo"
+   - Use addToInventory function
    
-2. CREATE INVOICE: When user wants to create a bill (e.g., "Create bill for Ramesh 2 kurtis", "Amit ke liye 500 rupees ka bill banao", "Bill John for 2 Apples")
-   - Use generateInvoice function with customer_name, items, payment_mode, amount_paid
+2. CREATE INVOICE: "Create bill for Ramesh 2 kurtis", "Bill banao"
+   - Use generateInvoice function
+   - IMPORTANT: ALWAYS ask for customer phone number if not provided
+   - Ask: "Customer ka phone number bataiye" or "Please share customer's phone number"
    
+3. BUSINESS INSIGHTS: "Aaj ki sale?", "Low stock", "Top selling items", "Total customers"
+   - Use getBusinessInsights function
+   - Provide specific numbers from your context
+
+4. BUSINESS ADVICE & MARKETING:
+   - Give practical marketing tips for Indian retail
+   - Festival marketing ideas (Diwali, Holi, etc.)
+   - WhatsApp marketing tips
+   - Customer retention strategies
+   - Pricing strategies
+   - Display and visual merchandising tips
+   - Seasonal stock planning
+   - GST compliance basics
+
+5. GENERAL BUSINESS KNOWLEDGE:
+   - Indian retail market trends
+   - E-commerce integration tips
+   - Digital payment solutions (UPI, Paytm, etc.)
+   - Social media marketing for local shops
+   - Google My Business optimization
+   - Customer service best practices
+
 RULES:
-- Always respond in the SAME LANGUAGE as the user (Hindi/English)
-- If user speaks Hindi, respond in Hindi
-- If user speaks English, respond in English
-- Keep responses SHORT and helpful
-- For greetings like "Hello", respond friendly without calling functions
-- If product not found during billing, inform user to add it first
-- For payment: cash, card, online, or due (credit)
+- Always respond in the SAME LANGUAGE as the user (Hindi/English/Hinglish)
+- Keep responses helpful, friendly, and practical
+- For greetings, be warm and ask how you can help
+- When creating bills, ALWAYS get customer phone number
+- Provide specific numbers when discussing sales/inventory
+- For marketing advice, give actionable tips
+- Use emojis sparingly to make responses friendly
+- Maximum response length: 200 words
+
+GST RATES KNOWLEDGE (Indian):
+- Clothing <1000: 5%
+- Clothing >1000: 12%
+- Electronics: 18%
+- Footwear <1000: 5%
+- Footwear >1000: 18%
+- Food items: 5% or 0%
+- Cosmetics: 18%
+- Furniture: 18%
 
 Current Time: ${new Date().toISOString()}`;
 
@@ -195,7 +280,8 @@ Current Time: ${new Date().toISOString()}`;
               user_id: userId,
               name: args.product_name,
               quantity: args.quantity,
-              price: args.price || 0
+              price: args.price || 0,
+              gst_rate: 18
             });
 
           if (error) {
@@ -212,6 +298,48 @@ Current Time: ${new Date().toISOString()}`;
           }
         }
       } else if (functionName === "generateInvoice") {
+        // First check if customer phone is provided
+        if (!args.customer_phone) {
+          return new Response(
+            JSON.stringify({
+              message: "Customer ka phone number bataiye please. Bill banane ke liye phone number zaroori hai. 📱\n\nPlease share customer's 10-digit phone number.",
+              action: null,
+              result: null,
+              needsPhone: true
+            }),
+            { headers: { ...corsHeaders, "Content-Type": "application/json" } }
+          );
+        }
+
+        // Create or find customer first
+        let customerId = null;
+        const { data: existingCustomer } = await supabase
+          .from("customers")
+          .select("id")
+          .eq("user_id", userId)
+          .eq("phone", args.customer_phone)
+          .single();
+
+        if (existingCustomer) {
+          customerId = existingCustomer.id;
+        } else {
+          const { data: newCustomer, error: custError } = await supabase
+            .from("customers")
+            .insert({
+              user_id: userId,
+              name: args.customer_name,
+              phone: args.customer_phone,
+              total_purchases: 0,
+              total_dues: 0
+            })
+            .select()
+            .single();
+
+          if (!custError && newCustomer) {
+            customerId = newCustomer.id;
+          }
+        }
+
         const { data: result, error } = await supabase.rpc("create_invoice_transaction", {
           p_user_id: userId,
           p_customer_name: args.customer_name,
@@ -224,7 +352,86 @@ Current Time: ${new Date().toISOString()}`;
           console.error("RPC error:", error);
           toolResult = { success: false, error: error.message };
         } else {
-          toolResult = result;
+          // Update invoice with customer phone and customer_id
+          if (result?.invoice_id) {
+            await supabase
+              .from("invoices")
+              .update({ 
+                customer_phone: args.customer_phone,
+                customer_id: customerId
+              })
+              .eq("id", result.invoice_id);
+
+            // Update customer totals
+            if (customerId) {
+              const { data: custData } = await supabase
+                .from("customers")
+                .select("total_purchases, total_dues")
+                .eq("id", customerId)
+                .single();
+
+              if (custData) {
+                await supabase
+                  .from("customers")
+                  .update({
+                    total_purchases: Number(custData.total_purchases || 0) + Number(result.total || 0),
+                    total_dues: Number(custData.total_dues || 0) + Number(result.due_amount || 0)
+                  })
+                  .eq("id", customerId);
+              }
+            }
+          }
+          toolResult = { ...result, customer_phone: args.customer_phone };
+        }
+      } else if (functionName === "getBusinessInsights") {
+        // Return insights based on the current context
+        const insightType = args.insight_type;
+        
+        switch (insightType) {
+          case "daily_sales":
+          case "revenue":
+            toolResult = {
+              success: true,
+              type: "daily_sales",
+              total_sales: todaysSales,
+              invoice_count: invoiceCount,
+              period: "today"
+            };
+            break;
+          case "top_products":
+            toolResult = {
+              success: true,
+              type: "top_products",
+              products: topSelling.map(p => ({ name: p.name, sold: p.sales_count || 0 }))
+            };
+            break;
+          case "low_stock":
+            toolResult = {
+              success: true,
+              type: "low_stock",
+              count: lowStockItems.length,
+              items: lowStockItems.map(i => ({ name: i.name, quantity: i.quantity }))
+            };
+            break;
+          case "customer_count":
+            toolResult = {
+              success: true,
+              type: "customers",
+              total: totalCustomers
+            };
+            break;
+          case "all":
+          default:
+            toolResult = {
+              success: true,
+              type: "summary",
+              today_sales: todaysSales,
+              invoice_count: invoiceCount,
+              total_products: totalProducts,
+              low_stock_count: lowStockItems.length,
+              total_customers: totalCustomers,
+              top_selling: topSelling.slice(0, 3).map(p => p.name)
+            };
         }
       }
 
@@ -253,7 +460,7 @@ Current Time: ${new Date().toISOString()}`;
       const finalData = await finalResponse.json();
       const finalMessage = finalData.choices?.[0]?.message?.content || 
         (toolResult.success 
-          ? `Done! ${functionName === "addToInventory" ? `Added ${args.quantity} ${args.product_name}` : `Bill created for ${args.customer_name}`}`
+          ? `Done! ${functionName === "addToInventory" ? `Added ${args.quantity} ${args.product_name}` : functionName === "generateInvoice" ? `Bill created for ${args.customer_name}` : "Here are your insights"}`
           : `Error: ${toolResult.error}`);
 
       return new Response(
@@ -269,7 +476,7 @@ Current Time: ${new Date().toISOString()}`;
     // No function called - return text response
     return new Response(
       JSON.stringify({
-        message: assistantMessage.content || "I'm here to help with inventory and billing.",
+        message: assistantMessage.content || "I'm here to help with inventory, billing, and business advice. Ask me anything!",
         action: null,
         result: null,
       }),
