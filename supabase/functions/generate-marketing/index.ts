@@ -13,24 +13,36 @@ serve(async (req) => {
   }
 
   try {
-    const { template, shopName, posterText, festival, discount, language } = await req.json();
+    const { template, shopName, posterText, festival, discount, language, theme } = await req.json();
 
     if (!LOVABLE_API_KEY) {
       throw new Error("LOVABLE_API_KEY is not configured");
     }
 
     const isHindi = language === 'hindi';
+    const themeDescription = theme === 'elegant' ? 'elegant and sophisticated' 
+      : theme === 'festive' ? 'colorful and festive' 
+      : theme === 'modern' ? 'modern and minimalist'
+      : 'vibrant and eye-catching';
 
     // Generate caption based on template
     let captionPrompt = '';
     if (template === 'sale') {
-      captionPrompt = `Create a catchy social media caption for a ${discount}% OFF sale at "${shopName}". Include emojis, hashtags, and a call to action. ${isHindi ? 'Write in Hindi using Devanagari script.' : 'Write in English.'}`;
+      captionPrompt = isHindi 
+        ? `एक आकर्षक सोशल मीडिया कैप्शन बनाएं "${shopName}" दुकान की ${discount}% छूट के लिए। इमोजी, हैशटैग और कॉल टू एक्शन शामिल करें। हिंदी में देवनागरी लिपि में लिखें। 100 शब्दों से कम में।`
+        : `Create a catchy social media caption for a ${discount}% OFF sale at "${shopName}". Include emojis, hashtags, and a call to action. Write in English. Under 100 words.`;
     } else if (template === 'festival') {
-      captionPrompt = `Create a festive social media caption for ${festival} celebration offer at "${shopName}". Include festival greetings, emojis, hashtags. ${isHindi ? 'Write in Hindi using Devanagari script.' : 'Write in English.'}`;
+      captionPrompt = isHindi
+        ? `"${shopName}" दुकान के लिए ${festival} त्योहार की शुभकामनाओं के साथ एक आकर्षक सोशल मीडिया कैप्शन बनाएं। त्योहार की शुभकामनाएं, विशेष ऑफर, इमोजी और हैशटैग शामिल करें। हिंदी में देवनागरी लिपि में लिखें। 100 शब्दों से कम में।`
+        : `Create a festive social media caption for ${festival} celebration offer at "${shopName}". Include festival greetings, special offers, emojis, hashtags. Write in English. Under 100 words.`;
     } else if (template === 'new-arrival') {
-      captionPrompt = `Create an exciting social media caption announcing new arrivals at "${shopName}". Include emojis, hashtags, and urgency. ${isHindi ? 'Write in Hindi using Devanagari script.' : 'Write in English.'}`;
+      captionPrompt = isHindi
+        ? `"${shopName}" दुकान में नए आगमन की घोषणा के लिए एक उत्साहजनक सोशल मीडिया कैप्शन बनाएं। इमोजी, हैशटैग और तत्काल खरीदने की अपील शामिल करें। हिंदी में देवनागरी लिपि में लिखें। 100 शब्दों से कम में।`
+        : `Create an exciting social media caption announcing new arrivals at "${shopName}". Include emojis, hashtags, and urgency to visit. Write in English. Under 100 words.`;
     } else {
-      captionPrompt = `Create a promotional social media caption for "${shopName}" about: ${posterText || 'special offers'}. Include emojis and hashtags. ${isHindi ? 'Write in Hindi using Devanagari script.' : 'Write in English.'}`;
+      captionPrompt = isHindi
+        ? `"${shopName}" दुकान के लिए "${posterText || 'विशेष ऑफर'}" के बारे में एक प्रमोशनल सोशल मीडिया कैप्शन बनाएं। इमोजी और हैशटैग शामिल करें। हिंदी में देवनागरी लिपि में लिखें। 100 शब्दों से कम में।`
+        : `Create a promotional social media caption for "${shopName}" about: ${posterText || 'special offers'}. Include emojis and hashtags. Write in English. Under 100 words.`;
     }
 
     // Generate caption using AI
@@ -45,7 +57,15 @@ serve(async (req) => {
         messages: [
           { 
             role: "system", 
-            content: "You are a social media marketing expert for Indian retail businesses. Create engaging, short captions (max 150 words) with emojis and relevant hashtags. Be creative and persuasive."
+            content: `You are a social media marketing expert for Indian retail businesses. Create engaging, short captions (max 100 words) with emojis and relevant hashtags. 
+Be creative, persuasive, and culturally relevant for Indian audience.
+${isHindi ? 'Always respond in Hindi using Devanagari script.' : 'Respond in English.'}
+Include:
+- Catchy opening line
+- Key offer/message
+- Call to action
+- 3-5 relevant hashtags
+- Appropriate emojis`
           },
           { role: "user", content: captionPrompt }
         ],
@@ -59,18 +79,52 @@ serve(async (req) => {
 
     const captionData = await captionResponse.json();
     const caption = captionData.choices?.[0]?.message?.content || 
-      `🎉 Special offer at ${shopName}! ${discount ? `${discount}% OFF` : 'Amazing deals'} - Visit now! #Shopping #Deals`;
+      (isHindi 
+        ? `🎉 ${shopName} पर विशेष ऑफर! ${discount ? `${discount}% की छूट` : 'शानदार डील्स'} - अभी विजिट करें! #Shopping #Deals`
+        : `🎉 Special offer at ${shopName}! ${discount ? `${discount}% OFF` : 'Amazing deals'} - Visit now! #Shopping #Deals`);
 
     // Generate image using AI
     let imageUrl = null;
     try {
-      const imagePrompt = template === 'sale' 
-        ? `Professional retail sale poster, bold "${discount}% OFF" text, modern design, vibrant colors, shopping theme, clean layout, no text other than discount`
-        : template === 'festival'
-        ? `Beautiful ${festival} festival celebration poster, traditional Indian decorations, festive colors, elegant design, celebration theme`
-        : template === 'new-arrival'
-        ? `Modern new arrivals announcement poster, shopping bags, fresh and exciting design, retail store theme, premium look`
-        : `Professional retail promotional poster, modern design, shopping theme, ${posterText || 'special offer'}`;
+      let imagePrompt = '';
+      
+      if (template === 'sale') {
+        imagePrompt = `Professional retail sale poster design:
+- Bold "${discount}% OFF" text prominently displayed
+- ${themeDescription} color scheme
+- Modern and clean layout
+- Shopping/retail theme with bags or products
+- No additional text or watermarks
+- Square format 1080x1080
+- High contrast and readable
+- Professional marketing quality`;
+      } else if (template === 'festival') {
+        imagePrompt = `Beautiful ${festival} festival celebration poster:
+- Traditional Indian festive decorations (diyas, rangoli, flowers)
+- ${themeDescription} colors matching ${festival}
+- Elegant and celebratory design
+- Cultural elements authentic to ${festival}
+- No text needed
+- Square format 1080x1080
+- Premium quality festive design`;
+      } else if (template === 'new-arrival') {
+        imagePrompt = `Modern new arrivals announcement poster:
+- Fresh and exciting design with "NEW" theme
+- Shopping bags, gift boxes, or fashion items
+- ${themeDescription} color palette
+- Clean and premium look
+- Retail store atmosphere
+- Square format 1080x1080
+- Professional marketing quality`;
+      } else {
+        imagePrompt = `Professional retail promotional poster:
+- ${themeDescription} design style
+- Modern and clean layout
+- Shopping/retail theme
+- ${posterText || 'special offer'} concept
+- Square format 1080x1080
+- High quality marketing poster`;
+      }
 
       const imageResponse = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
         method: "POST",
@@ -81,7 +135,7 @@ serve(async (req) => {
         body: JSON.stringify({
           model: "google/gemini-2.5-flash-image-preview",
           messages: [
-            { role: "user", content: `Generate a professional marketing poster: ${imagePrompt}. Make it visually appealing for social media. Square format, 1080x1080 pixels ideal.` }
+            { role: "user", content: imagePrompt }
           ],
           modalities: ["image", "text"]
         }),
@@ -93,6 +147,8 @@ serve(async (req) => {
         if (images && images.length > 0) {
           imageUrl = images[0].image_url?.url;
         }
+      } else {
+        console.error("Image generation failed:", await imageResponse.text());
       }
     } catch (imageError) {
       console.error("Image generation error:", imageError);

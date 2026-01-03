@@ -2,6 +2,7 @@ import { ReactNode } from 'react';
 import { BottomNav } from './BottomNav';
 import { Header } from './Header';
 import { AIAssistant } from '@/components/ai/AIAssistant';
+import { AIFloatingButton } from '@/components/ai/AIFloatingButton';
 
 interface AppLayoutProps {
   children: ReactNode;
@@ -19,6 +20,7 @@ export function AppLayout({ children, title, hideNav }: AppLayoutProps) {
       </main>
       
       {!hideNav && <BottomNav />}
+      <AIFloatingButton />
       <AIAssistant />
     </div>
   );
