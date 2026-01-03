@@ -37,6 +37,9 @@ const translations: Translations = {
   'create_first_bill': { en: 'Create your first bill', hi: 'पहला बिल बनाएं' },
   'walk_in_customer': { en: 'Walk-in Customer', hi: 'वॉक-इन ग्राहक' },
   'items': { en: 'items', hi: 'आइटम' },
+  'welcome_back': { en: 'Welcome back', hi: 'स्वागत है' },
+  'your_store': { en: 'Your Store', hi: 'आपकी दुकान' },
+  'dashboard': { en: 'Dashboard', hi: 'डैशबोर्ड' },
   
   // Navigation tabs
   'bill': { en: 'Bill', hi: 'बिल' },
@@ -68,6 +71,10 @@ const translations: Translations = {
   'cancel': { en: 'Cancel', hi: 'रद्द करें' },
   'update': { en: 'Update', hi: 'अपडेट करें' },
   'delete': { en: 'Delete', hi: 'हटाएं' },
+  'add_new_item': { en: 'Add New Item', hi: 'नया आइटम जोड़ें' },
+  'item_name': { en: 'Item Name', hi: 'आइटम का नाम' },
+  'product_name': { en: 'Product Name', hi: 'उत्पाद का नाम' },
+  'add': { en: 'Add', hi: 'जोड़ें' },
   
   // Billing
   'create_bill': { en: 'Create Bill', hi: 'बिल बनाएं' },
@@ -89,6 +96,14 @@ const translations: Translations = {
   'amount_received': { en: 'Amount Received', hi: 'प्राप्त राशि' },
   'balance': { en: 'Balance', hi: 'शेष' },
   'save_print': { en: 'Save & Print', hi: 'सेव और प्रिंट' },
+  'billing': { en: 'Billing', hi: 'बिलिंग' },
+  'new_bill': { en: 'New Bill', hi: 'नया बिल' },
+  'select_customer': { en: 'Select Customer', hi: 'ग्राहक चुनें' },
+  'add_product': { en: 'Add Product', hi: 'उत्पाद जोड़ें' },
+  'bill_summary': { en: 'Bill Summary', hi: 'बिल सारांश' },
+  'generate_bill': { en: 'Generate Bill', hi: 'बिल बनाएं' },
+  'print_bill': { en: 'Print Bill', hi: 'बिल प्रिंट करें' },
+  'share_bill': { en: 'Share Bill', hi: 'बिल शेयर करें' },
   
   // Reports
   'today': { en: 'Today', hi: 'आज' },
@@ -98,6 +113,14 @@ const translations: Translations = {
   'export_report': { en: 'Export Report as PDF', hi: 'PDF के रूप में निर्यात करें' },
   'recent_invoices': { en: 'Recent Invoices', hi: 'हाल के बिल' },
   'no_invoices_period': { en: 'No invoices in this period', hi: 'इस अवधि में कोई बिल नहीं' },
+  'sales_report': { en: 'Sales Report', hi: 'बिक्री रिपोर्ट' },
+  'revenue': { en: 'Revenue', hi: 'राजस्व' },
+  'profit': { en: 'Profit', hi: 'लाभ' },
+  'expenses': { en: 'Expenses', hi: 'खर्च' },
+  'analytics': { en: 'Analytics', hi: 'विश्लेषण' },
+  'weekly': { en: 'Weekly', hi: 'साप्ताहिक' },
+  'monthly': { en: 'Monthly', hi: 'मासिक' },
+  'yearly': { en: 'Yearly', hi: 'वार्षिक' },
   
   // Customers
   'customers': { en: 'Customers', hi: 'ग्राहक' },
@@ -105,6 +128,13 @@ const translations: Translations = {
   'search_customers': { en: 'Search customers...', hi: 'ग्राहक खोजें...' },
   'total_purchases': { en: 'Total Purchases', hi: 'कुल खरीदारी' },
   'total_dues': { en: 'Total Dues', hi: 'कुल बकाया' },
+  'customer_history': { en: 'Customer History', hi: 'ग्राहक इतिहास' },
+  'new_customer': { en: 'New Customer', hi: 'नया ग्राहक' },
+  'customer_phone': { en: 'Customer Phone', hi: 'ग्राहक फ़ोन' },
+  'customer_email': { en: 'Customer Email', hi: 'ग्राहक ईमेल' },
+  'customer_address': { en: 'Customer Address', hi: 'ग्राहक पता' },
+  'no_customers': { en: 'No customers yet', hi: 'अभी कोई ग्राहक नहीं' },
+  'purchase_history': { en: 'Purchase History', hi: 'खरीदारी इतिहास' },
   
   // Settings
   'shop_settings': { en: 'Shop Settings', hi: 'दुकान सेटिंग्स' },
@@ -136,6 +166,15 @@ const translations: Translations = {
   'view_plans': { en: 'View subscription plans', hi: 'सब्सक्रिप्शन प्लान देखें' },
   'export_backup': { en: 'Export Backup', hi: 'बैकअप एक्सपोर्ट करें' },
   'import_backup': { en: 'Import Backup', hi: 'बैकअप इम्पोर्ट करें' },
+  'language': { en: 'Language', hi: 'भाषा' },
+  'english': { en: 'English', hi: 'अंग्रेज़ी' },
+  'hindi': { en: 'Hindi', hi: 'हिंदी' },
+  'theme': { en: 'Theme', hi: 'थीम' },
+  'dark_mode': { en: 'Dark Mode', hi: 'डार्क मोड' },
+  'light_mode': { en: 'Light Mode', hi: 'लाइट मोड' },
+  'logout': { en: 'Logout', hi: 'लॉगआउट' },
+  'profile': { en: 'Profile', hi: 'प्रोफाइल' },
+  'account_settings': { en: 'Account Settings', hi: 'खाता सेटिंग्स' },
   
   // Common
   'loading_inventory': { en: 'Loading inventory...', hi: 'इन्वेंट्री लोड हो रही है...' },
@@ -143,6 +182,27 @@ const translations: Translations = {
   'success': { en: 'Success', hi: 'सफल' },
   'confirm': { en: 'Confirm', hi: 'पुष्टि करें' },
   'back': { en: 'Back', hi: 'वापस' },
+  'close': { en: 'Close', hi: 'बंद करें' },
+  'open': { en: 'Open', hi: 'खोलें' },
+  'edit': { en: 'Edit', hi: 'संपादित करें' },
+  'view': { en: 'View', hi: 'देखें' },
+  'search': { en: 'Search', hi: 'खोजें' },
+  'filter': { en: 'Filter', hi: 'फ़िल्टर' },
+  'sort': { en: 'Sort', hi: 'क्रमबद्ध करें' },
+  'refresh': { en: 'Refresh', hi: 'रिफ्रेश' },
+  'retry': { en: 'Retry', hi: 'पुनः प्रयास करें' },
+  'submit': { en: 'Submit', hi: 'जमा करें' },
+  'next': { en: 'Next', hi: 'अगला' },
+  'previous': { en: 'Previous', hi: 'पिछला' },
+  'continue': { en: 'Continue', hi: 'जारी रखें' },
+  'skip': { en: 'Skip', hi: 'छोड़ें' },
+  'done': { en: 'Done', hi: 'हो गया' },
+  'yes': { en: 'Yes', hi: 'हाँ' },
+  'no': { en: 'No', hi: 'नहीं' },
+  'ok': { en: 'OK', hi: 'ठीक है' },
+  'apply': { en: 'Apply', hi: 'लागू करें' },
+  'reset': { en: 'Reset', hi: 'रीसेट करें' },
+  'clear': { en: 'Clear', hi: 'साफ़ करें' },
   
   // Product Detail
   'product_details': { en: 'Product Details', hi: 'उत्पाद विवरण' },
@@ -166,13 +226,19 @@ const translations: Translations = {
   'demo_limit_reached': { en: 'Demo Limit Reached', hi: 'डेमो सीमा पूरी' },
   'continue_demo': { en: 'Continue Demo', hi: 'डेमो जारी रखें' },
   'choose_plan': { en: 'Choose your plan', hi: 'अपना प्लान चुनें' },
-  'monthly': { en: 'Monthly', hi: 'मासिक' },
-  'yearly': { en: 'Yearly', hi: 'वार्षिक' },
   'month': { en: 'month', hi: 'महीना' },
   'year': { en: 'year', hi: 'वर्ष' },
   'save_15': { en: 'Save 15%', hi: '15% बचाएं' },
   'most_popular': { en: 'Most Popular', hi: 'सबसे लोकप्रिय' },
   'proceed_to_checkout': { en: 'Proceed to Checkout', hi: 'चेकआउट पर जाएं' },
+  'current_plan': { en: 'Current Plan', hi: 'वर्तमान प्लान' },
+  'upgrade': { en: 'Upgrade', hi: 'अपग्रेड करें' },
+  'downgrade': { en: 'Downgrade', hi: 'डाउनग्रेड करें' },
+  'free_trial': { en: 'Free Trial', hi: 'मुफ़्त ट्रायल' },
+  'per_month': { en: 'per month', hi: 'प्रति माह' },
+  'per_year': { en: 'per year', hi: 'प्रति वर्ष' },
+  'features_included': { en: 'Features Included', hi: 'शामिल सुविधाएं' },
+  'unlimited': { en: 'Unlimited', hi: 'असीमित' },
   
   // Checkout
   'checkout': { en: 'Checkout', hi: 'चेकआउट' },
@@ -218,13 +284,15 @@ const translations: Translations = {
   'ai_greeting': { en: 'Hi! How can I help you today?', hi: 'नमस्ते! आज मैं आपकी कैसे मदद कर सकता हूं?' },
   'type_message': { en: 'Type a message...', hi: 'संदेश लिखें...' },
   'quick_actions': { en: 'Quick Actions', hi: 'त्वरित कार्य' },
+  'voice_text': { en: 'Voice + Text', hi: 'आवाज़ + टेक्स्ट' },
+  'speak_now': { en: 'Speak now', hi: 'अभी बोलें' },
+  'type_or_speak': { en: 'Type or speak...', hi: 'टाइप करें या बोलें...' },
   
   // Invoice
   'tax_invoice': { en: 'TAX INVOICE', hi: 'टैक्स इनवॉयस' },
   'invoice_no': { en: 'Invoice No', hi: 'इनवॉयस नंबर' },
   'invoice_date': { en: 'Invoice Date', hi: 'इनवॉयस तिथि' },
   'bill_to': { en: 'Bill To', hi: 'प्राप्तकर्ता' },
-  'item_name': { en: 'Item Name', hi: 'आइटम का नाम' },
   'qty': { en: 'Qty', hi: 'मात्रा' },
   'rate': { en: 'Rate', hi: 'दर' },
   'amount': { en: 'Amount', hi: 'राशि' },
@@ -236,6 +304,90 @@ const translations: Translations = {
   'amount_received_invoice': { en: 'Amount Received', hi: 'प्राप्त राशि' },
   'thank_you_shopping': { en: 'Thank you for shopping with us!', hi: 'हमारे साथ खरीदारी के लिए धन्यवाद!' },
   'powered_by': { en: 'Powered by Revonn', hi: 'रेवॉन द्वारा संचालित' },
+  'invoice_not_found': { en: 'Invoice not found', hi: 'इनवॉयस नहीं मिला' },
+  'download_pdf': { en: 'Download PDF', hi: 'PDF डाउनलोड करें' },
+  'share_whatsapp': { en: 'Share on WhatsApp', hi: 'WhatsApp पर शेयर करें' },
+  
+  // Marketing
+  'marketing_posters': { en: 'Marketing Posters', hi: 'मार्केटिंग पोस्टर' },
+  'create_poster': { en: 'Create Poster', hi: 'पोस्टर बनाएं' },
+  'ai_powered': { en: 'AI-Powered', hi: 'AI-पावर्ड' },
+  'select_template': { en: 'Select Template', hi: 'टेम्पलेट चुनें' },
+  'sale_offer': { en: 'Sale Offer', hi: 'सेल ऑफर' },
+  'festival': { en: 'Festival', hi: 'त्योहार' },
+  'new_arrival': { en: 'New Arrival', hi: 'नया आगमन' },
+  'event': { en: 'Event', hi: 'इवेंट' },
+  'discount_percent': { en: 'Discount %', hi: 'डिस्काउंट %' },
+  'custom_text': { en: 'Custom Text', hi: 'कस्टम टेक्स्ट' },
+  'optional': { en: 'Optional', hi: 'वैकल्पिक' },
+  'generate_poster': { en: 'Generate Poster', hi: 'पोस्टर बनाएं' },
+  'generating': { en: 'Generating...', hi: 'बना रहे हैं...' },
+  'poster_ready': { en: 'Poster Ready!', hi: 'पोस्टर तैयार!' },
+  'caption': { en: 'Caption', hi: 'कैप्शन' },
+  'copy': { en: 'Copy', hi: 'कॉपी करें' },
+  'share_on': { en: 'Share On', hi: 'शेयर करें' },
+  'marketing_tips': { en: 'Marketing Tips', hi: 'मार्केटिंग टिप्स' },
+  'enter_message': { en: 'Enter your message...', hi: 'अपना मैसेज यहां लिखें...' },
+  'download': { en: 'Download', hi: 'डाउनलोड करें' },
+  
+  // Staff
+  'staff_management': { en: 'Staff Management', hi: 'कर्मचारी प्रबंधन' },
+  'add_staff': { en: 'Add Staff', hi: 'कर्मचारी जोड़ें' },
+  'staff_name': { en: 'Staff Name', hi: 'कर्मचारी का नाम' },
+  'staff_phone': { en: 'Staff Phone', hi: 'कर्मचारी फ़ोन' },
+  'staff_role': { en: 'Role', hi: 'भूमिका' },
+  'staff_salary': { en: 'Salary', hi: 'वेतन' },
+  'staff_username': { en: 'Username', hi: 'यूज़रनेम' },
+  'staff_password': { en: 'Password', hi: 'पासवर्ड' },
+  'permissions': { en: 'Permissions', hi: 'अनुमतियां' },
+  'can_create_bills': { en: 'Can Create Bills', hi: 'बिल बना सकते हैं' },
+  'can_view_reports': { en: 'Can View Reports', hi: 'रिपोर्ट देख सकते हैं' },
+  'can_manage_inventory': { en: 'Can Manage Inventory', hi: 'इन्वेंट्री प्रबंधित कर सकते हैं' },
+  'can_manage_customers': { en: 'Can Manage Customers', hi: 'ग्राहक प्रबंधित कर सकते हैं' },
+  'active': { en: 'Active', hi: 'सक्रिय' },
+  'inactive': { en: 'Inactive', hi: 'निष्क्रिय' },
+  'attendance': { en: 'Attendance', hi: 'उपस्थिति' },
+  'present': { en: 'Present', hi: 'उपस्थित' },
+  'absent': { en: 'Absent', hi: 'अनुपस्थित' },
+  'half_day': { en: 'Half Day', hi: 'आधा दिन' },
+  
+  // Auth
+  'login': { en: 'Login', hi: 'लॉगिन' },
+  'signup': { en: 'Sign Up', hi: 'साइन अप' },
+  'email': { en: 'Email', hi: 'ईमेल' },
+  'password': { en: 'Password', hi: 'पासवर्ड' },
+  'confirm_password': { en: 'Confirm Password', hi: 'पासवर्ड की पुष्टि करें' },
+  'forgot_password': { en: 'Forgot Password?', hi: 'पासवर्ड भूल गए?' },
+  'dont_have_account': { en: "Don't have an account?", hi: 'खाता नहीं है?' },
+  'already_have_account': { en: 'Already have an account?', hi: 'पहले से खाता है?' },
+  'login_as_owner': { en: 'Login as Owner', hi: 'मालिक के रूप में लॉगिन' },
+  'login_as_staff': { en: 'Login as Staff', hi: 'कर्मचारी के रूप में लॉगिन' },
+  'shop_name': { en: 'Shop Name', hi: 'दुकान का नाम' },
+  'owner_name': { en: 'Owner Name', hi: 'मालिक का नाम' },
+  'create_account': { en: 'Create Account', hi: 'खाता बनाएं' },
+  
+  // BOM Upload
+  'bom_upload': { en: 'BOM Upload', hi: 'BOM अपलोड' },
+  'upload_bill': { en: 'Upload Bill', hi: 'बिल अपलोड करें' },
+  'upload_image': { en: 'Upload Image', hi: 'छवि अपलोड करें' },
+  'upload_excel': { en: 'Upload Excel', hi: 'एक्सेल अपलोड करें' },
+  'parsing': { en: 'Parsing...', hi: 'पार्स हो रहा है...' },
+  'items_found': { en: 'Items Found', hi: 'आइटम मिले' },
+  'import_all': { en: 'Import All', hi: 'सभी इम्पोर्ट करें' },
+  'import_selected': { en: 'Import Selected', hi: 'चुने हुए इम्पोर्ट करें' },
+  
+  // Errors & Success Messages
+  'error_occurred': { en: 'An error occurred', hi: 'एक त्रुटि हुई' },
+  'try_again': { en: 'Please try again', hi: 'कृपया पुनः प्रयास करें' },
+  'saved_successfully': { en: 'Saved successfully', hi: 'सफलतापूर्वक सेव हुआ' },
+  'deleted_successfully': { en: 'Deleted successfully', hi: 'सफलतापूर्वक हटाया गया' },
+  'updated_successfully': { en: 'Updated successfully', hi: 'सफलतापूर्वक अपडेट हुआ' },
+  'added_successfully': { en: 'Added successfully', hi: 'सफलतापूर्वक जोड़ा गया' },
+  'please_login': { en: 'Please login first', hi: 'कृपया पहले लॉगिन करें' },
+  'invalid_input': { en: 'Invalid input', hi: 'अमान्य इनपुट' },
+  'required_field': { en: 'This field is required', hi: 'यह फ़ील्ड आवश्यक है' },
+  'no_data': { en: 'No data available', hi: 'कोई डेटा उपलब्ध नहीं' },
+  'coming_soon': { en: 'Coming Soon', hi: 'जल्द आ रहा है' },
 };
 
 interface LanguageContextType {
@@ -254,6 +406,8 @@ export const LanguageProvider: React.FC<{ children: React.ReactNode }> = ({ chil
 
   useEffect(() => {
     localStorage.setItem('revonn-language', language);
+    // Update document lang attribute
+    document.documentElement.lang = language === 'hi' ? 'hi' : 'en';
   }, [language]);
 
   const t = (key: string): string => {

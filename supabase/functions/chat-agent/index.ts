@@ -81,18 +81,18 @@ const tools = [
     type: "function",
     function: {
       name: "getBusinessInsights",
-      description: "Get business data like sales, customers, inventory, profit, top selling items. Use when user asks about their business performance, sales, revenue, profit, customers, stock levels etc.",
+      description: "Get comprehensive business data including historical sales (today, 7 days, 30 days, all time), customers, inventory, profit, top selling items, revenue trends. Use when user asks about any business metrics.",
       parameters: {
         type: "object",
         properties: {
           insight_type: {
             type: "string",
-            enum: ["daily_sales", "monthly_sales", "top_products", "low_stock", "customer_count", "revenue", "profit", "all"],
+            enum: ["daily_sales", "weekly_sales", "monthly_sales", "yearly_sales", "top_products", "low_stock", "customer_count", "customer_list", "revenue", "profit", "all_data", "inventory_value", "pending_dues"],
             description: "Type of business insight requested"
           },
           period: {
             type: "string",
-            enum: ["today", "week", "month", "year"],
+            enum: ["today", "week", "month", "year", "all"],
             description: "Time period for the insight"
           }
         },
@@ -108,7 +108,7 @@ serve(async (req) => {
   }
 
   try {
-    const { messages, userId } = await req.json();
+    const { messages, userId, language } = await req.json();
 
     if (!LOVABLE_API_KEY) {
       throw new Error("LOVABLE_API_KEY is not configured");
@@ -118,85 +118,170 @@ serve(async (req) => {
     const supabaseKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
     const supabase = createClient(supabaseUrl, supabaseKey);
 
-    // Fetch business data for context
-    const today = new Date();
+    // Fetch comprehensive business data
+    const now = new Date();
+    const today = new Date(now);
     today.setHours(0, 0, 0, 0);
     
-    const [invoicesRes, inventoryRes, customersRes] = await Promise.all([
+    const weekAgo = new Date(now);
+    weekAgo.setDate(weekAgo.getDate() - 7);
+    
+    const monthAgo = new Date(now);
+    monthAgo.setDate(monthAgo.getDate() - 30);
+    
+    const yearAgo = new Date(now);
+    yearAgo.setFullYear(yearAgo.getFullYear() - 1);
+
+    // Fetch all data in parallel
+    const [
+      allInvoicesRes,
+      todayInvoicesRes,
+      weekInvoicesRes,
+      monthInvoicesRes,
+      inventoryRes,
+      customersRes,
+      profileRes
+    ] = await Promise.all([
+      supabase.from("invoices").select("*").eq("user_id", userId).order("created_at", { ascending: false }),
       supabase.from("invoices").select("*").eq("user_id", userId).gte("created_at", today.toISOString()),
+      supabase.from("invoices").select("*").eq("user_id", userId).gte("created_at", weekAgo.toISOString()),
+      supabase.from("invoices").select("*").eq("user_id", userId).gte("created_at", monthAgo.toISOString()),
       supabase.from("inventory").select("*").eq("user_id", userId),
-      supabase.from("customers").select("*").eq("user_id", userId)
+      supabase.from("customers").select("*").eq("user_id", userId),
+      supabase.from("profiles").select("*").eq("user_id", userId).single()
     ]);
 
-    const todaysSales = invoicesRes.data?.reduce((sum, inv) => sum + Number(inv.total || 0), 0) || 0;
+    // Calculate metrics
+    const todaysSales = todayInvoicesRes.data?.reduce((sum, inv) => sum + Number(inv.total || 0), 0) || 0;
+    const weekSales = weekInvoicesRes.data?.reduce((sum, inv) => sum + Number(inv.total || 0), 0) || 0;
+    const monthSales = monthInvoicesRes.data?.reduce((sum, inv) => sum + Number(inv.total || 0), 0) || 0;
+    const allTimeSales = allInvoicesRes.data?.reduce((sum, inv) => sum + Number(inv.total || 0), 0) || 0;
+    
+    const todayInvoiceCount = todayInvoicesRes.data?.length || 0;
+    const weekInvoiceCount = weekInvoicesRes.data?.length || 0;
+    const monthInvoiceCount = monthInvoicesRes.data?.length || 0;
+    const allInvoiceCount = allInvoicesRes.data?.length || 0;
+    
     const totalProducts = inventoryRes.data?.length || 0;
     const lowStockItems = inventoryRes.data?.filter(i => Number(i.quantity) <= 5) || [];
-    const topSelling = inventoryRes.data?.sort((a, b) => (b.sales_count || 0) - (a.sales_count || 0)).slice(0, 5) || [];
+    const outOfStockItems = inventoryRes.data?.filter(i => Number(i.quantity) === 0) || [];
+    const topSelling = inventoryRes.data?.sort((a, b) => (b.sales_count || 0) - (a.sales_count || 0)).slice(0, 10) || [];
     const totalCustomers = customersRes.data?.length || 0;
-    const invoiceCount = invoicesRes.data?.length || 0;
+    
+    // Calculate inventory value
+    const inventoryValue = inventoryRes.data?.reduce((sum, item) => 
+      sum + (Number(item.price || 0) * Number(item.quantity || 0)), 0) || 0;
+    
+    // Calculate pending dues
+    const pendingDues = customersRes.data?.reduce((sum, cust) => 
+      sum + Number(cust.total_dues || 0), 0) || 0;
+    
+    // Get top customers
+    const topCustomers = customersRes.data?.sort((a, b) => 
+      (b.total_purchases || 0) - (a.total_purchases || 0)).slice(0, 5) || [];
 
-    const systemPrompt = `You are Revonn AI - an advanced, intelligent business assistant for Indian retail shop owners.
-You help manage stock, create invoices, provide business insights, and give marketing advice in Hindi and English.
+    // Recent invoices
+    const recentInvoices = allInvoicesRes.data?.slice(0, 10) || [];
+    
+    const shopName = profileRes.data?.shop_name || 'Your Shop';
 
-YOUR BUSINESS CONTEXT (Real-time Data):
-- Today's Sales: ₹${todaysSales.toLocaleString('en-IN')} from ${invoiceCount} invoices
-- Total Products: ${totalProducts}
-- Low Stock Items: ${lowStockItems.length} (${lowStockItems.slice(0, 3).map(i => i.name).join(', ')})
-- Top Selling: ${topSelling.slice(0, 3).map(i => `${i.name} (${i.sales_count || 0} sold)`).join(', ')}
-- Total Customers: ${totalCustomers}
+    const isHindi = language === 'hindi';
 
-CAPABILITIES:
-1. ADD INVENTORY: "Add 50 keyboards", "100 jeans stock add karo"
-   - Use addToInventory function
-   
-2. CREATE INVOICE: "Create bill for Ramesh 2 kurtis", "Bill banao"
-   - Use generateInvoice function
-   - IMPORTANT: ALWAYS ask for customer phone number if not provided
-   - Ask: "Customer ka phone number bataiye" or "Please share customer's phone number"
-   
-3. BUSINESS INSIGHTS: "Aaj ki sale?", "Low stock", "Top selling items", "Total customers"
-   - Use getBusinessInsights function
-   - Provide specific numbers from your context
+    const systemPrompt = `You are Revonn AI - an EXTREMELY intelligent and comprehensive business assistant for Indian retail shop owners.
+You have COMPLETE access to ALL business data including historical records. You know EVERYTHING about this business.
 
-4. BUSINESS ADVICE & MARKETING:
-   - Give practical marketing tips for Indian retail
-   - Festival marketing ideas (Diwali, Holi, etc.)
+SHOP: ${shopName}
+GSTIN: ${profileRes.data?.gstin || 'Not set'}
+
+═══════════════════════════════════════════
+📊 COMPLETE BUSINESS DATA (Real-time)
+═══════════════════════════════════════════
+
+💰 SALES SUMMARY:
+• Today: ₹${todaysSales.toLocaleString('en-IN')} (${todayInvoiceCount} bills)
+• This Week (7 days): ₹${weekSales.toLocaleString('en-IN')} (${weekInvoiceCount} bills)  
+• This Month (30 days): ₹${monthSales.toLocaleString('en-IN')} (${monthInvoiceCount} bills)
+• All Time: ₹${allTimeSales.toLocaleString('en-IN')} (${allInvoiceCount} bills)
+• Average Daily: ₹${monthInvoiceCount > 0 ? Math.round(monthSales / 30).toLocaleString('en-IN') : 0}
+
+📦 INVENTORY STATUS:
+• Total Products: ${totalProducts}
+• Inventory Value: ₹${inventoryValue.toLocaleString('en-IN')}
+• Low Stock (≤5): ${lowStockItems.length} items (${lowStockItems.slice(0, 5).map(i => `${i.name}: ${i.quantity}`).join(', ')})
+• Out of Stock: ${outOfStockItems.length} items
+
+🔥 TOP SELLING PRODUCTS:
+${topSelling.slice(0, 5).map((p, i) => `${i+1}. ${p.name} - ${p.sales_count || 0} sold (₹${p.price || 0})`).join('\n')}
+
+👥 CUSTOMERS:
+• Total Customers: ${totalCustomers}
+• Pending Dues: ₹${pendingDues.toLocaleString('en-IN')}
+• Top Customers: ${topCustomers.slice(0, 3).map(c => `${c.name} (₹${(c.total_purchases || 0).toLocaleString('en-IN')})`).join(', ')}
+
+🧾 RECENT INVOICES:
+${recentInvoices.slice(0, 5).map(inv => `• ${inv.invoice_number}: ${inv.customer_name || 'Walk-in'} - ₹${(inv.total || 0).toLocaleString('en-IN')}`).join('\n')}
+
+═══════════════════════════════════════════
+🛠️ YOUR CAPABILITIES
+═══════════════════════════════════════════
+
+1. INVENTORY MANAGEMENT:
+   - Add stock to existing products
+   - Create new products
+   - Check low stock alerts
+   - Product price information
+
+2. INVOICE/BILLING:
+   - Create customer bills with items
+   - ALWAYS ask for customer phone number
+   - Track payments and dues
+   - Calculate GST automatically
+
+3. BUSINESS ANALYTICS:
+   - Sales reports (daily/weekly/monthly/yearly)
+   - Profit insights
+   - Customer analytics
+   - Inventory analytics
+   - Revenue trends
+
+4. MARKETING ADVICE:
+   - Festival marketing (Diwali, Holi, Eid, etc.)
    - WhatsApp marketing tips
-   - Customer retention strategies
+   - Social media strategies
+   - Customer retention ideas
    - Pricing strategies
-   - Display and visual merchandising tips
-   - Seasonal stock planning
-   - GST compliance basics
+   - Local SEO tips
 
-5. GENERAL BUSINESS KNOWLEDGE:
-   - Indian retail market trends
-   - E-commerce integration tips
-   - Digital payment solutions (UPI, Paytm, etc.)
-   - Social media marketing for local shops
-   - Google My Business optimization
-   - Customer service best practices
+5. GST KNOWLEDGE:
+   - Clothing <₹1000: 5% | >₹1000: 12%
+   - Electronics: 18%
+   - Footwear <₹1000: 5% | >₹1000: 18%
+   - Food items: 0-5%
+   - Cosmetics: 18%
+   - Furniture: 18%
 
-RULES:
-- Always respond in the SAME LANGUAGE as the user (Hindi/English/Hinglish)
-- Keep responses helpful, friendly, and practical
-- For greetings, be warm and ask how you can help
-- When creating bills, ALWAYS get customer phone number
-- Provide specific numbers when discussing sales/inventory
-- For marketing advice, give actionable tips
-- Use emojis sparingly to make responses friendly
-- Maximum response length: 200 words
+6. BUSINESS TIPS:
+   - Inventory management
+   - Cash flow tips
+   - Customer service
+   - Store display ideas
+   - Digital payments (UPI)
+   - Google My Business
 
-GST RATES KNOWLEDGE (Indian):
-- Clothing <1000: 5%
-- Clothing >1000: 12%
-- Electronics: 18%
-- Footwear <1000: 5%
-- Footwear >1000: 18%
-- Food items: 5% or 0%
-- Cosmetics: 18%
-- Furniture: 18%
+═══════════════════════════════════════════
+📋 RESPONSE RULES
+═══════════════════════════════════════════
 
-Current Time: ${new Date().toISOString()}`;
+- LANGUAGE: Respond in ${isHindi ? 'HINDI (Devanagari script)' : 'ENGLISH'} - ALWAYS match user's language
+- Be friendly, helpful, and use emojis sparingly
+- For greetings, introduce yourself and ask how to help
+- When creating bills, ALWAYS ask for phone number if not provided
+- Give SPECIFIC numbers from the data above
+- Keep responses under 200 words but be comprehensive
+- For marketing tips, be practical and actionable
+
+Current Time: ${now.toISOString()}
+Today: ${now.toLocaleDateString('en-IN', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })}`;
 
     // Call Lovable AI Gateway with function calling
     const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
@@ -244,7 +329,6 @@ Current Time: ${new Date().toISOString()}`;
       let toolResult: any;
 
       if (functionName === "addToInventory") {
-        // First try to find existing product
         const { data: existingProduct } = await supabase
           .from("inventory")
           .select("id, name, quantity")
@@ -254,7 +338,6 @@ Current Time: ${new Date().toISOString()}`;
           .single();
 
         if (existingProduct) {
-          // Update existing product
           const newQuantity = (existingProduct.quantity || 0) + args.quantity;
           const { error } = await supabase
             .from("inventory")
@@ -273,7 +356,6 @@ Current Time: ${new Date().toISOString()}`;
             };
           }
         } else {
-          // Create new product
           const { error } = await supabase
             .from("inventory")
             .insert({
@@ -298,11 +380,12 @@ Current Time: ${new Date().toISOString()}`;
           }
         }
       } else if (functionName === "generateInvoice") {
-        // First check if customer phone is provided
         if (!args.customer_phone) {
           return new Response(
             JSON.stringify({
-              message: "Customer ka phone number bataiye please. Bill banane ke liye phone number zaroori hai. 📱\n\nPlease share customer's 10-digit phone number.",
+              message: isHindi 
+                ? "ग्राहक का फ़ोन नंबर बताइए। बिल बनाने के लिए 10 अंकों का मोबाइल नंबर ज़रूरी है। 📱"
+                : "Please share customer's 10-digit phone number to create the bill. 📱",
               action: null,
               result: null,
               needsPhone: true
@@ -311,7 +394,6 @@ Current Time: ${new Date().toISOString()}`;
           );
         }
 
-        // Create or find customer first
         let customerId = null;
         const { data: existingCustomer } = await supabase
           .from("customers")
@@ -352,7 +434,6 @@ Current Time: ${new Date().toISOString()}`;
           console.error("RPC error:", error);
           toolResult = { success: false, error: error.message };
         } else {
-          // Update invoice with customer phone and customer_id
           if (result?.invoice_id) {
             await supabase
               .from("invoices")
@@ -362,7 +443,6 @@ Current Time: ${new Date().toISOString()}`;
               })
               .eq("id", result.invoice_id);
 
-            // Update customer totals
             if (customerId) {
               const { data: custData } = await supabase
                 .from("customers")
@@ -384,25 +464,51 @@ Current Time: ${new Date().toISOString()}`;
           toolResult = { ...result, customer_phone: args.customer_phone };
         }
       } else if (functionName === "getBusinessInsights") {
-        // Return insights based on the current context
         const insightType = args.insight_type;
+        const period = args.period || 'today';
         
         switch (insightType) {
           case "daily_sales":
-          case "revenue":
             toolResult = {
               success: true,
               type: "daily_sales",
               total_sales: todaysSales,
-              invoice_count: invoiceCount,
+              invoice_count: todayInvoiceCount,
               period: "today"
+            };
+            break;
+          case "weekly_sales":
+            toolResult = {
+              success: true,
+              type: "weekly_sales",
+              total_sales: weekSales,
+              invoice_count: weekInvoiceCount,
+              period: "7 days"
+            };
+            break;
+          case "monthly_sales":
+            toolResult = {
+              success: true,
+              type: "monthly_sales",
+              total_sales: monthSales,
+              invoice_count: monthInvoiceCount,
+              period: "30 days"
+            };
+            break;
+          case "yearly_sales":
+            toolResult = {
+              success: true,
+              type: "yearly_sales",
+              total_sales: allTimeSales,
+              invoice_count: allInvoiceCount,
+              period: "all time"
             };
             break;
           case "top_products":
             toolResult = {
               success: true,
               type: "top_products",
-              products: topSelling.map(p => ({ name: p.name, sold: p.sales_count || 0 }))
+              products: topSelling.map(p => ({ name: p.name, sold: p.sales_count || 0, price: p.price }))
             };
             break;
           case "low_stock":
@@ -417,20 +523,61 @@ Current Time: ${new Date().toISOString()}`;
             toolResult = {
               success: true,
               type: "customers",
-              total: totalCustomers
+              total: totalCustomers,
+              pending_dues: pendingDues,
+              top_customers: topCustomers.map(c => ({ name: c.name, purchases: c.total_purchases }))
             };
             break;
-          case "all":
+          case "customer_list":
+            toolResult = {
+              success: true,
+              type: "customer_list",
+              customers: customersRes.data?.slice(0, 20).map(c => ({ 
+                name: c.name, 
+                phone: c.phone,
+                purchases: c.total_purchases,
+                dues: c.total_dues 
+              }))
+            };
+            break;
+          case "inventory_value":
+            toolResult = {
+              success: true,
+              type: "inventory_value",
+              total_value: inventoryValue,
+              total_products: totalProducts,
+              low_stock_count: lowStockItems.length,
+              out_of_stock_count: outOfStockItems.length
+            };
+            break;
+          case "pending_dues":
+            toolResult = {
+              success: true,
+              type: "pending_dues",
+              total_dues: pendingDues,
+              customers_with_dues: customersRes.data?.filter(c => (c.total_dues || 0) > 0).map(c => ({
+                name: c.name,
+                phone: c.phone,
+                dues: c.total_dues
+              }))
+            };
+            break;
+          case "all_data":
           default:
             toolResult = {
               success: true,
               type: "summary",
               today_sales: todaysSales,
-              invoice_count: invoiceCount,
+              week_sales: weekSales,
+              month_sales: monthSales,
+              all_time_sales: allTimeSales,
+              today_invoices: todayInvoiceCount,
               total_products: totalProducts,
+              inventory_value: inventoryValue,
               low_stock_count: lowStockItems.length,
               total_customers: totalCustomers,
-              top_selling: topSelling.slice(0, 3).map(p => p.name)
+              pending_dues: pendingDues,
+              top_selling: topSelling.slice(0, 5).map(p => p.name)
             };
         }
       }
