@@ -1,6 +1,6 @@
 import React from 'react';
 import { useNavigate } from 'react-router-dom';
-import { X, Check, Sparkles, Crown, Zap } from 'lucide-react';
+import { X, Check, Crown, Sparkles } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -11,99 +11,80 @@ interface SubscriptionPlansProps {
   onClose?: () => void;
 }
 
-const plans = [
-  {
-    id: 'basic',
-    name: 'Revonn Basic',
-    nameHi: 'रेवॉन बेसिक',
-    icon: Zap,
-    monthlyPrice: 219,
-    yearlyPrice: 2199,
-    popular: false,
-    highlights: [
-      { en: 'Unlimited billing (Non-GST)', hi: 'असीमित बिलिंग (नॉन-जीएसटी)' },
-      { en: 'Unlimited inventory items', hi: 'असीमित इन्वेंट्री आइटम' },
-      { en: 'Unlimited customers', hi: 'असीमित ग्राहक' },
-      { en: 'Daily sales & expense tracking', hi: 'दैनिक बिक्री और खर्च ट्रैकिंग' },
-      { en: 'PDF invoices & sharing', hi: 'पीडीएफ इनवॉयस और शेयरिंग' },
-      { en: 'Basic reports & analytics', hi: 'बेसिक रिपोर्ट और एनालिटिक्स' },
-    ],
-    notIncluded: [
-      { en: 'GST invoices', hi: 'जीएसटी इनवॉयस' },
-      { en: 'Staff management', hi: 'स्टाफ प्रबंधन' },
-      { en: 'Multi-user access', hi: 'मल्टी-यूज़र एक्सेस' },
-    ]
-  },
-  {
-    id: 'pro',
-    name: 'Revonn Pro',
-    nameHi: 'रेवॉन प्रो',
-    icon: Crown,
-    monthlyPrice: 349,
-    yearlyPrice: 3499,
-    popular: true,
-    highlights: [
-      { en: 'Everything in Basic', hi: 'बेसिक की सभी सुविधाएं' },
-      { en: 'GST invoices (CGST/SGST/IGST)', hi: 'जीएसटी इनवॉयस (CGST/SGST/IGST)' },
-      { en: 'HSN/SAC code support', hi: 'HSN/SAC कोड सपोर्ट' },
-      { en: 'Staff management & attendance', hi: 'स्टाफ प्रबंधन और उपस्थिति' },
-      { en: 'Role-based access control', hi: 'रोल-आधारित एक्सेस कंट्रोल' },
-      { en: 'Advanced reports & analytics', hi: 'एडवांस्ड रिपोर्ट और एनालिटिक्स' },
-      { en: 'Multi-user login', hi: 'मल्टी-यूज़र लॉगिन' },
-      { en: 'Priority support', hi: 'प्राथमिकता सहायता' },
-    ],
-    notIncluded: []
-  }
+// Single plan - Revonn Pro with all features
+const revonnProFeatures = [
+  // Digital Billing & Invoicing
+  { category: 'billing', en: 'GST & Non-GST invoices (PDF)', hi: 'जीएसटी और नॉन-जीएसटी इनवॉयस (पीडीएफ)' },
+  { category: 'billing', en: 'Item variants (size, color)', hi: 'आइटम वेरिएंट (साइज, कलर)' },
+  { category: 'billing', en: 'Discounts & WhatsApp sharing', hi: 'डिस्काउंट और व्हाट्सएप शेयरिंग' },
+  { category: 'billing', en: 'Daily bill summary', hi: 'दैनिक बिल सारांश' },
+  
+  // Inventory & Stock Management  
+  { category: 'inventory', en: 'Unlimited inventory items', hi: 'असीमित इन्वेंट्री आइटम' },
+  { category: 'inventory', en: 'Auto stock deduction on billing', hi: 'बिलिंग पर ऑटो स्टॉक कटौती' },
+  { category: 'inventory', en: 'Low-stock alerts & insights', hi: 'कम स्टॉक अलर्ट और इनसाइट्स' },
+  
+  // Customer CRM
+  { category: 'crm', en: 'Unlimited customers', hi: 'असीमित ग्राहक' },
+  { category: 'crm', en: 'Purchase history & tagging', hi: 'खरीद इतिहास और टैगिंग' },
+  { category: 'crm', en: 'Outstanding balance tracking', hi: 'बकाया राशि ट्रैकिंग' },
+  
+  // Finance & Reports
+  { category: 'reports', en: 'Daily & monthly sales reports', hi: 'दैनिक और मासिक बिक्री रिपोर्ट' },
+  { category: 'reports', en: 'Profit & Loss summary', hi: 'लाभ और हानि सारांश' },
+  { category: 'reports', en: 'Expense & cash tracking', hi: 'खर्च और कैश ट्रैकिंग' },
+  
+  // Staff Management
+  { category: 'staff', en: 'Staff management & attendance', hi: 'स्टाफ प्रबंधन और उपस्थिति' },
+  { category: 'staff', en: 'Role-based access control', hi: 'रोल-आधारित एक्सेस कंट्रोल' },
+  { category: 'staff', en: 'Salary calculation', hi: 'वेतन गणना' },
+  
+  // AI Assistant
+  { category: 'ai', en: 'AI-assisted billing (voice & text)', hi: 'एआई-सहायता बिलिंग (वॉयस और टेक्स्ट)' },
+  { category: 'ai', en: 'AI inventory & sales insights', hi: 'एआई इन्वेंट्री और सेल्स इनसाइट्स' },
+  { category: 'ai', en: 'Marketing content generation', hi: 'मार्केटिंग कंटेंट जेनरेशन' },
+  
+  // Multi-User
+  { category: 'multi', en: 'Multi-user & multi-device', hi: 'मल्टी-यूज़र और मल्टी-डिवाइस' },
+  { category: 'multi', en: 'Owner + Staff login', hi: 'मालिक + स्टाफ लॉगिन' },
 ];
-
-const aiAddon = {
-  name: 'AI Add-on',
-  nameHi: 'AI ऐड-ऑन',
-  icon: Sparkles,
-  price: 99,
-  features: [
-    { en: 'Voice & text billing commands', hi: 'वॉयस और टेक्स्ट बिलिंग कमांड' },
-    { en: 'Smart inventory insights', hi: 'स्मार्ट इन्वेंट्री इनसाइट्स' },
-    { en: 'Low-stock predictions', hi: 'कम स्टॉक भविष्यवाणी' },
-    { en: 'Daily profit analysis', hi: 'दैनिक लाभ विश्लेषण' },
-    { en: 'Marketing content generation', hi: 'मार्केटिंग कंटेंट जेनरेशन' },
-    { en: 'Hindi & English support', hi: 'हिंदी और अंग्रेजी सपोर्ट' },
-  ]
-};
 
 export const SubscriptionPlans: React.FC<SubscriptionPlansProps> = ({ trigger, onClose }) => {
   const navigate = useNavigate();
   const { language } = useLanguage();
-  const [billingCycle, setBillingCycle] = React.useState<'monthly' | 'yearly'>('monthly');
+  const [billingCycle, setBillingCycle] = React.useState<'monthly' | 'yearly'>('yearly');
+  const isHindi = language === 'hi';
+
+  const monthlyPrice = 299;
+  const yearlyPrice = 2999;
+  const yearlySavings = (monthlyPrice * 12) - yearlyPrice; // ₹589 savings
 
   const triggerMessages: { [key: string]: { en: string; hi: string } } = {
     bills: { en: "You've reached the demo limit of 5 bills.", hi: "आपने 5 बिल की डेमो सीमा पूरी कर ली है।" },
     inventory: { en: "You've reached the demo limit of 10 inventory items.", hi: "आपने 10 इन्वेंट्री आइटम की डेमो सीमा पूरी कर ली है।" },
     customers: { en: "You've reached the demo limit of 10 customers.", hi: "आपने 10 ग्राहक की डेमो सीमा पूरी कर ली है।" },
-    gst: { en: "GST features require a Pro subscription.", hi: "जीएसटी फीचर्स के लिए प्रो सब्सक्रिप्शन चाहिए।" },
-    staff: { en: "Staff management requires a Pro subscription.", hi: "स्टाफ प्रबंधन के लिए प्रो सब्सक्रिप्शन चाहिए।" },
-    reports: { en: "Advanced reports require a paid subscription.", hi: "एडवांस्ड रिपोर्ट के लिए पेड सब्सक्रिप्शन चाहिए।" },
+    gst: { en: "GST features require Revonn Pro.", hi: "जीएसटी फीचर्स के लिए रेवॉन प्रो चाहिए।" },
+    staff: { en: "Staff management requires Revonn Pro.", hi: "स्टाफ प्रबंधन के लिए रेवॉन प्रो चाहिए।" },
+    reports: { en: "Advanced reports require Revonn Pro.", hi: "एडवांस्ड रिपोर्ट के लिए रेवॉन प्रो चाहिए।" },
+    demo_expired: { en: "You've reached the free demo limit. Choose a plan to continue.", hi: "आपने फ्री डेमो सीमा पूरी कर ली है। जारी रखने के लिए प्लान चुनें।" },
   };
 
-  const handleSubscribe = (planId: string) => {
-    navigate('/settings/pricing');
+  const handleSubscribe = () => {
+    navigate('/checkout', {
+      state: {
+        plan: 'pro',
+        billingCycle,
+        total: billingCycle === 'monthly' ? monthlyPrice : yearlyPrice,
+        planName: 'Revonn Pro'
+      }
+    });
   };
 
   return (
     <div className="min-h-screen bg-background p-4 pb-24">
-      <div className="max-w-4xl mx-auto">
+      <div className="max-w-lg mx-auto">
         {/* Header */}
         <div className="flex items-center justify-between mb-6">
-          <div>
-            <h1 className="text-2xl font-bold text-foreground">
-              {language === 'hi' ? 'अपना प्लान चुनें' : 'Choose Your Plan'}
-            </h1>
-            {trigger && triggerMessages[trigger] && (
-              <p className="text-muted-foreground text-sm mt-1">
-                {language === 'hi' ? triggerMessages[trigger].hi : triggerMessages[trigger].en}
-              </p>
-            )}
-          </div>
           {onClose && (
             <Button variant="ghost" size="icon" onClick={onClose}>
               <X className="h-5 w-5" />
@@ -111,136 +92,121 @@ export const SubscriptionPlans: React.FC<SubscriptionPlansProps> = ({ trigger, o
           )}
         </div>
 
+        {/* Main Headline */}
+        <div className="text-center mb-6">
+          <h1 className="text-2xl font-bold text-foreground mb-2">
+            {isHindi ? 'एक प्लान। सब कुछ शामिल।' : 'One Plan. Everything Included.'}
+          </h1>
+          {trigger && triggerMessages[trigger] && (
+            <p className="text-destructive text-sm font-medium">
+              {isHindi ? triggerMessages[trigger].hi : triggerMessages[trigger].en}
+            </p>
+          )}
+        </div>
+
         {/* Billing Toggle */}
-        <div className="flex items-center justify-center gap-4 mb-8">
+        <div className="flex items-center justify-center gap-2 mb-6">
           <button
             onClick={() => setBillingCycle('monthly')}
-            className={`px-4 py-2 rounded-lg transition-colors ${
+            className={`px-5 py-2.5 rounded-xl font-medium transition-all ${
               billingCycle === 'monthly' 
-                ? 'bg-primary text-primary-foreground' 
-                : 'bg-muted text-muted-foreground'
+                ? 'bg-primary text-primary-foreground shadow-lg' 
+                : 'bg-muted text-muted-foreground hover:bg-muted/80'
             }`}
           >
-            {language === 'hi' ? 'मासिक' : 'Monthly'}
+            {isHindi ? 'मासिक' : 'Monthly'}
           </button>
           <button
             onClick={() => setBillingCycle('yearly')}
-            className={`px-4 py-2 rounded-lg transition-colors ${
+            className={`px-5 py-2.5 rounded-xl font-medium transition-all flex items-center gap-2 ${
               billingCycle === 'yearly' 
-                ? 'bg-primary text-primary-foreground' 
-                : 'bg-muted text-muted-foreground'
+                ? 'bg-primary text-primary-foreground shadow-lg' 
+                : 'bg-muted text-muted-foreground hover:bg-muted/80'
             }`}
           >
-            {language === 'hi' ? 'वार्षिक' : 'Yearly'}
-            <Badge variant="secondary" className="ml-2 text-xs bg-success/20 text-success">
-              {language === 'hi' ? '15% बचाएं' : 'Save 15%'}
+            {isHindi ? 'वार्षिक' : 'Yearly'}
+            <Badge className="bg-success/90 text-white text-xs px-1.5 py-0.5">
+              {isHindi ? 'बेस्ट वैल्यू' : 'Best Value'}
             </Badge>
           </button>
         </div>
 
-        {/* Plans */}
-        <div className="grid md:grid-cols-2 gap-6 mb-8">
-          {plans.map((plan) => {
-            const Icon = plan.icon;
-            const price = billingCycle === 'monthly' ? plan.monthlyPrice : plan.yearlyPrice;
-            
-            return (
-              <Card 
-                key={plan.id}
-                className={`p-6 relative ${
-                  plan.popular ? 'border-primary ring-2 ring-primary/20' : ''
-                }`}
-              >
-                {plan.popular && (
-                  <Badge className="absolute -top-3 left-1/2 -translate-x-1/2 bg-primary">
-                    {language === 'hi' ? 'सबसे लोकप्रिय' : 'Most Popular'}
-                  </Badge>
-                )}
-                
-                <div className="flex items-center gap-3 mb-4">
-                  <div className={`p-2 rounded-lg ${plan.popular ? 'bg-primary/10' : 'bg-muted'}`}>
-                    <Icon className={`h-6 w-6 ${plan.popular ? 'text-primary' : 'text-muted-foreground'}`} />
-                  </div>
-                  <h2 className="text-xl font-bold">{language === 'hi' ? plan.nameHi : plan.name}</h2>
-                </div>
-
-                <div className="mb-6">
-                  <span className="text-3xl font-bold">₹{price}</span>
-                  <span className="text-muted-foreground">
-                    /{billingCycle === 'monthly' ? (language === 'hi' ? 'महीना' : 'month') : (language === 'hi' ? 'वर्ष' : 'year')}
-                  </span>
-                </div>
-
-                <ul className="space-y-3 mb-6">
-                  {plan.highlights.map((feature, idx) => (
-                    <li key={idx} className="flex items-start gap-2">
-                      <Check className="h-5 w-5 text-success shrink-0 mt-0.5" />
-                      <span className="text-foreground text-sm">
-                        {language === 'hi' ? feature.hi : feature.en}
-                      </span>
-                    </li>
-                  ))}
-                  {plan.notIncluded.map((feature, idx) => (
-                    <li key={`not-${idx}`} className="flex items-start gap-2">
-                      <X className="h-5 w-5 text-muted-foreground shrink-0 mt-0.5" />
-                      <span className="text-muted-foreground text-sm">
-                        {language === 'hi' ? feature.hi : feature.en}
-                      </span>
-                    </li>
-                  ))}
-                </ul>
-
-                <Button 
-                  className="w-full" 
-                  variant={plan.popular ? 'default' : 'outline'}
-                  onClick={() => handleSubscribe(plan.id)}
-                >
-                  {language === 'hi' ? `${plan.nameHi} चुनें` : `Subscribe to ${plan.name}`}
-                </Button>
-              </Card>
-            );
-          })}
-        </div>
-
-        {/* AI Add-on */}
-        <Card className="p-6 bg-gradient-to-r from-violet-500/10 to-purple-500/10 border-violet-500/30">
-          <div className="flex items-center justify-between flex-wrap gap-4">
-            <div className="flex items-center gap-3">
-              <div className="p-2 rounded-lg bg-violet-500/20">
-                <Sparkles className="h-6 w-6 text-violet-500" />
-              </div>
-              <div>
-                <h3 className="text-lg font-bold">{language === 'hi' ? aiAddon.nameHi : aiAddon.name}</h3>
-                <p className="text-sm text-muted-foreground">
-                  {language === 'hi' ? 'किसी भी प्लान में AI जोड़ें' : 'Add AI intelligence to any plan'}
-                </p>
-              </div>
-            </div>
-            <div className="text-right">
-              <span className="text-2xl font-bold">+₹{aiAddon.price}</span>
-              <span className="text-muted-foreground">/{language === 'hi' ? 'महीना' : 'month'}</span>
-            </div>
-          </div>
+        {/* Single Plan Card - Revonn Pro */}
+        <Card className="p-6 border-2 border-primary bg-gradient-to-br from-primary/5 to-primary/10 shadow-xl mb-6">
+          {/* Popular Badge */}
+          <Badge className="absolute -top-3 left-1/2 -translate-x-1/2 bg-primary px-4 py-1">
+            <Crown className="w-3 h-3 mr-1" />
+            {isHindi ? 'रेवॉन प्रो' : 'Revonn Pro'}
+          </Badge>
           
-          <div className="mt-4 grid grid-cols-2 md:grid-cols-3 gap-2">
-            {aiAddon.features.map((feature, idx) => (
-              <div key={idx} className="flex items-center gap-2 text-sm">
-                <Sparkles className="h-4 w-4 text-violet-500" />
-                <span>{language === 'hi' ? feature.hi : feature.en}</span>
+          {/* Price Display */}
+          <div className="text-center pt-4 pb-6 border-b border-border mb-6">
+            <div className="flex items-baseline justify-center gap-1">
+              <span className="text-4xl font-bold text-foreground">
+                ₹{billingCycle === 'monthly' ? monthlyPrice : yearlyPrice}
+              </span>
+              <span className="text-muted-foreground text-lg">
+                /{billingCycle === 'monthly' ? (isHindi ? 'महीना' : 'month') : (isHindi ? 'वर्ष' : 'year')}
+              </span>
+            </div>
+            
+            {billingCycle === 'yearly' && (
+              <div className="mt-2 flex items-center justify-center gap-2">
+                <Badge variant="outline" className="bg-success/10 text-success border-success/30">
+                  <Sparkles className="w-3 h-3 mr-1" />
+                  {isHindi ? `₹${yearlySavings} बचाएं मासिक की तुलना में` : `Save ₹${yearlySavings} compared to monthly`}
+                </Badge>
+              </div>
+            )}
+          </div>
+
+          {/* All Features List */}
+          <div className="space-y-2 mb-6">
+            {revonnProFeatures.map((feature, idx) => (
+              <div key={idx} className="flex items-start gap-2">
+                <Check className="h-4 w-4 text-success shrink-0 mt-0.5" />
+                <span className="text-foreground text-sm">
+                  {isHindi ? feature.hi : feature.en}
+                </span>
               </div>
             ))}
           </div>
+
+          {/* Subscribe Button */}
+          <Button 
+            className="w-full btn-gold py-6 text-lg font-semibold shadow-lg hover:shadow-xl transition-all" 
+            onClick={handleSubscribe}
+          >
+            {isHindi 
+              ? `₹${billingCycle === 'monthly' ? monthlyPrice : yearlyPrice} में सब्सक्राइब करें`
+              : `Subscribe for ₹${billingCycle === 'monthly' ? monthlyPrice : yearlyPrice}`
+            }
+          </Button>
         </Card>
 
-        {/* Demo Info */}
-        <div className="mt-8 text-center text-sm text-muted-foreground">
-          <p>
-            {language === 'hi' 
-              ? 'डेमो मोड में शामिल: 5 बिल, 10 इन्वेंट्री आइटम, 10 ग्राहक' 
-              : 'Demo mode includes: 5 bills, 10 inventory items, 10 customers'}
+        {/* All Features Included Note */}
+        <div className="text-center text-sm text-muted-foreground bg-muted/50 rounded-xl p-4 mb-6">
+          <p className="font-medium text-foreground mb-1">
+            {isHindi ? '✨ सभी फीचर्स मासिक और वार्षिक दोनों प्लान में शामिल' : '✨ All features included in both monthly and yearly plans'}
           </p>
           <p>
-            {language === 'hi' 
+            {isHindi ? 'कोई छुपी फीस नहीं, कोई ऐड-ऑन नहीं' : 'No hidden fees, no add-ons required'}
+          </p>
+        </div>
+
+        {/* Demo Info */}
+        <div className="text-center text-sm text-muted-foreground">
+          <p className="font-medium mb-1">
+            {isHindi ? 'फ्री डेमो में शामिल:' : 'Free demo includes:'}
+          </p>
+          <p>
+            {isHindi 
+              ? '5 बिल • 10 इन्वेंट्री आइटम • 10 ग्राहक • आज की सेल्स समरी'
+              : '5 bills • 10 inventory items • 10 customers • Today\'s sales summary'
+            }
+          </p>
+          <p className="mt-2 text-xs">
+            {isHindi 
               ? 'सब्सक्रिप्शन के बाद सभी डेमो डेटा सुरक्षित रहेगा।' 
               : 'All demo data will be preserved after subscription.'}
           </p>

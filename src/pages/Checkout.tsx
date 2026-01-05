@@ -1,86 +1,81 @@
 import React, { useState } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
-import { ChevronLeft, CreditCard, Smartphone, Building2, Shield, Check } from 'lucide-react';
+import { ChevronLeft, Shield, Loader2, Smartphone, Crown } from 'lucide-react';
 import { AppLayout } from '@/components/layout/AppLayout';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
+import { Badge } from '@/components/ui/badge';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { useSubscription } from '@/contexts/SubscriptionContext';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 
-type PaymentMethod = 'upi' | 'card' | 'netbanking';
-
 export default function Checkout() {
   const navigate = useNavigate();
   const location = useLocation();
-  const { language, t } = useLanguage();
+  const { language } = useLanguage();
   const { refreshSubscription } = useSubscription();
+  const isHindi = language === 'hi';
   
-  const { plan, billingCycle, includeAI, total, planName } = location.state || {};
+  const { plan, billingCycle, total, planName } = location.state || {};
   
-  const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>('upi');
-  const [upiId, setUpiId] = useState('');
   const [isProcessing, setIsProcessing] = useState(false);
 
   if (!plan) {
-    navigate('/settings/pricing');
+    navigate('/subscription');
     return null;
   }
 
-  const handlePayment = async () => {
-    if (paymentMethod === 'upi' && !upiId) {
-      toast.error(language === 'hi' ? 'कृपया UPI ID दर्ज करें' : 'Please enter UPI ID');
-      return;
-    }
+  const yearlySavings = billingCycle === 'yearly' ? 589 : 0;
 
+  const handlePhonePePayment = async () => {
     setIsProcessing(true);
     
     try {
-      // Simulate payment processing
-      await new Promise(resolve => setTimeout(resolve, 2000));
-      
-      // Update subscription in database
       const { data: { user } } = await supabase.auth.getUser();
-      if (user) {
-        const expiresAt = new Date();
-        if (billingCycle === 'monthly') {
-          expiresAt.setMonth(expiresAt.getMonth() + 1);
-        } else {
-          expiresAt.setFullYear(expiresAt.getFullYear() + 1);
-        }
-
-        await supabase
-          .from('user_subscriptions')
-          .update({
-            plan_type: plan,
-            ai_addon: includeAI,
-            billing_cycle: billingCycle,
-            is_active: true,
-            started_at: new Date().toISOString(),
-            expires_at: expiresAt.toISOString(),
-            updated_at: new Date().toISOString()
-          })
-          .eq('user_id', user.id);
-
-        await refreshSubscription();
+      if (!user) {
+        toast.error(isHindi ? 'कृपया पहले लॉगिन करें' : 'Please login first');
+        navigate('/auth');
+        return;
       }
 
-      toast.success(
-        language === 'hi' 
-          ? 'भुगतान सफल! आपका प्लान सक्रिय हो गया है।' 
-          : 'Payment successful! Your plan is now active.'
-      );
+      // Initiate PhonePe payment
+      const response = await supabase.functions.invoke('phonepe-payment', {
+        body: {
+          action: 'initiate',
+          userId: user.id,
+          amount: total,
+          billingCycle: billingCycle,
+          planName: planName,
+          callbackUrl: `${window.location.origin}/payment-status`
+        }
+      });
+
+      if (response.error) throw response.error;
+
+      const result = response.data;
       
-      navigate('/dashboard');
+      if (result.success && result.paymentUrl) {
+        // Store transaction ID for verification
+        localStorage.setItem('pendingTransaction', JSON.stringify({
+          transactionId: result.transactionId,
+          userId: user.id,
+          planType: plan,
+          billingCycle: billingCycle,
+          amount: total
+        }));
+        
+        // Redirect to PhonePe payment page
+        window.location.href = result.paymentUrl;
+      } else {
+        throw new Error(result.error || 'Failed to initiate payment');
+      }
     } catch (error) {
       console.error('Payment error:', error);
       toast.error(
-        language === 'hi' 
-          ? 'भुगतान विफल। कृपया पुनः प्रयास करें।' 
-          : 'Payment failed. Please try again.'
+        isHindi 
+          ? 'पेमेंट शुरू करने में त्रुटि। कृपया पुनः प्रयास करें।' 
+          : 'Error initiating payment. Please try again.'
       );
     } finally {
       setIsProcessing(false);
@@ -88,7 +83,7 @@ export default function Checkout() {
   };
 
   return (
-    <AppLayout title={t('checkout')} hideNav>
+    <AppLayout title={isHindi ? 'चेकआउट' : 'Checkout'} hideNav>
       <div className="px-4 py-4 pb-32 space-y-6">
         {/* Header */}
         <div className="flex items-center gap-3">
@@ -99,126 +94,96 @@ export default function Checkout() {
             <ChevronLeft className="w-5 h-5" />
           </button>
           <div>
-            <h1 className="text-xl font-bold text-foreground">{t('checkout')}</h1>
-            <p className="text-sm text-muted-foreground">{t('complete_purchase')}</p>
+            <h1 className="text-xl font-bold text-foreground">
+              {isHindi ? 'चेकआउट' : 'Checkout'}
+            </h1>
+            <p className="text-sm text-muted-foreground">
+              {isHindi ? 'अपनी खरीदारी पूरी करें' : 'Complete your purchase'}
+            </p>
           </div>
         </div>
 
         {/* Order Summary */}
-        <Card className="p-4">
-          <h2 className="font-semibold mb-4">{t('order_summary')}</h2>
-          <div className="space-y-3">
-            <div className="flex justify-between">
-              <span className="text-muted-foreground">{planName}</span>
-              <span className="font-medium">₹{total - (includeAI ? 99 : 0)}</span>
+        <Card className="p-5 bg-gradient-to-br from-primary/5 to-primary/10 border-primary/30">
+          <div className="flex items-center gap-3 mb-4">
+            <div className="p-2 rounded-lg bg-primary/20">
+              <Crown className="w-5 h-5 text-primary" />
             </div>
-            {includeAI && (
-              <div className="flex justify-between">
-                <span className="text-muted-foreground">AI Add-on</span>
-                <span className="font-medium">₹99</span>
+            <div>
+              <h2 className="font-bold text-lg">{planName || 'Revonn Pro'}</h2>
+              <Badge variant="secondary" className="text-xs">
+                {billingCycle === 'yearly' 
+                  ? (isHindi ? 'वार्षिक प्लान' : 'Yearly Plan') 
+                  : (isHindi ? 'मासिक प्लान' : 'Monthly Plan')
+                }
+              </Badge>
+            </div>
+          </div>
+          
+          <div className="space-y-3 border-t border-border pt-4">
+            <div className="flex justify-between text-sm">
+              <span className="text-muted-foreground">
+                {planName} ({billingCycle === 'yearly' ? (isHindi ? 'वार्षिक' : 'Yearly') : (isHindi ? 'मासिक' : 'Monthly')})
+              </span>
+              <span className="font-medium">₹{total}</span>
+            </div>
+            
+            {yearlySavings > 0 && (
+              <div className="flex justify-between text-sm text-success">
+                <span>{isHindi ? 'आपकी बचत' : 'Your savings'}</span>
+                <span className="font-medium">₹{yearlySavings}</span>
               </div>
             )}
-            <div className="flex justify-between">
-              <span className="text-muted-foreground">{t('billing_cycle')}</span>
-              <span className="font-medium capitalize">{billingCycle}</span>
-            </div>
+            
             <div className="border-t border-border pt-3 flex justify-between">
-              <span className="font-bold">{t('total')}</span>
-              <span className="font-bold text-primary">₹{total}</span>
+              <span className="font-bold text-lg">{isHindi ? 'कुल राशि' : 'Total'}</span>
+              <span className="font-bold text-lg text-primary">₹{total}</span>
             </div>
           </div>
         </Card>
 
-        {/* Payment Method */}
-        <div>
-          <h2 className="font-semibold mb-4">{t('payment_method')}</h2>
-          <div className="space-y-3">
-            <Card 
-              onClick={() => setPaymentMethod('upi')}
-              className={`p-4 cursor-pointer transition-all ${
-                paymentMethod === 'upi' ? 'border-primary ring-2 ring-primary/20' : ''
-              }`}
-            >
-              <div className="flex items-center gap-3">
-                <div className="p-2 rounded-lg bg-secondary">
-                  <Smartphone className="w-5 h-5 text-muted-foreground" />
-                </div>
-                <div className="flex-1">
-                  <p className="font-medium">UPI</p>
-                  <p className="text-xs text-muted-foreground">Google Pay, PhonePe, Paytm</p>
-                </div>
-                <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center ${
-                  paymentMethod === 'upi' ? 'border-primary bg-primary' : 'border-muted-foreground'
-                }`}>
-                  {paymentMethod === 'upi' && <Check className="w-3 h-3 text-primary-foreground" />}
-                </div>
-              </div>
-              
-              {paymentMethod === 'upi' && (
-                <div className="mt-4">
-                  <Label htmlFor="upi">{t('enter_upi_id')}</Label>
-                  <Input
-                    id="upi"
-                    placeholder="yourname@upi"
-                    value={upiId}
-                    onChange={(e) => setUpiId(e.target.value)}
-                    className="mt-2"
-                  />
-                </div>
-              )}
-            </Card>
-
-            <Card 
-              onClick={() => setPaymentMethod('card')}
-              className={`p-4 cursor-pointer transition-all ${
-                paymentMethod === 'card' ? 'border-primary ring-2 ring-primary/20' : ''
-              }`}
-            >
-              <div className="flex items-center gap-3">
-                <div className="p-2 rounded-lg bg-secondary">
-                  <CreditCard className="w-5 h-5 text-muted-foreground" />
-                </div>
-                <div className="flex-1">
-                  <p className="font-medium">{t('credit_debit_card')}</p>
-                  <p className="text-xs text-muted-foreground">Visa, Mastercard, RuPay</p>
-                </div>
-                <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center ${
-                  paymentMethod === 'card' ? 'border-primary bg-primary' : 'border-muted-foreground'
-                }`}>
-                  {paymentMethod === 'card' && <Check className="w-3 h-3 text-primary-foreground" />}
-                </div>
-              </div>
-            </Card>
-
-            <Card 
-              onClick={() => setPaymentMethod('netbanking')}
-              className={`p-4 cursor-pointer transition-all ${
-                paymentMethod === 'netbanking' ? 'border-primary ring-2 ring-primary/20' : ''
-              }`}
-            >
-              <div className="flex items-center gap-3">
-                <div className="p-2 rounded-lg bg-secondary">
-                  <Building2 className="w-5 h-5 text-muted-foreground" />
-                </div>
-                <div className="flex-1">
-                  <p className="font-medium">{t('net_banking')}</p>
-                  <p className="text-xs text-muted-foreground">{t('all_major_banks')}</p>
-                </div>
-                <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center ${
-                  paymentMethod === 'netbanking' ? 'border-primary bg-primary' : 'border-muted-foreground'
-                }`}>
-                  {paymentMethod === 'netbanking' && <Check className="w-3 h-3 text-primary-foreground" />}
-                </div>
-              </div>
-            </Card>
+        {/* Features Included */}
+        <Card className="p-4">
+          <h3 className="font-semibold mb-3">
+            {isHindi ? '✨ शामिल सभी फीचर्स:' : '✨ All features included:'}
+          </h3>
+          <div className="grid grid-cols-2 gap-2 text-sm text-muted-foreground">
+            <span>• {isHindi ? 'असीमित बिलिंग' : 'Unlimited billing'}</span>
+            <span>• {isHindi ? 'जीएसटी इनवॉयस' : 'GST invoices'}</span>
+            <span>• {isHindi ? 'इन्वेंट्री प्रबंधन' : 'Inventory management'}</span>
+            <span>• {isHindi ? 'स्टाफ प्रबंधन' : 'Staff management'}</span>
+            <span>• {isHindi ? 'AI असिस्टेंट' : 'AI Assistant'}</span>
+            <span>• {isHindi ? 'रिपोर्ट्स और एनालिटिक्स' : 'Reports & analytics'}</span>
           </div>
+        </Card>
+
+        {/* Payment Method - PhonePe */}
+        <div>
+          <h2 className="font-semibold mb-4">{isHindi ? 'पेमेंट मेथड' : 'Payment Method'}</h2>
+          
+          <Card className="p-4 border-2 border-primary bg-primary/5">
+            <div className="flex items-center gap-3">
+              <div className="p-2 rounded-lg bg-[#5f259f]">
+                <Smartphone className="w-6 h-6 text-white" />
+              </div>
+              <div className="flex-1">
+                <p className="font-semibold">PhonePe</p>
+                <p className="text-xs text-muted-foreground">
+                  UPI, Debit/Credit Card, Net Banking
+                </p>
+              </div>
+              <Badge className="bg-success/20 text-success border-success/30">
+                {isHindi ? 'सुरक्षित' : 'Secure'}
+              </Badge>
+            </div>
+          </Card>
         </div>
 
         {/* Security Note */}
-        <div className="flex items-center gap-2 p-3 bg-success/10 rounded-lg">
+        <div className="flex items-center gap-2 p-3 bg-success/10 rounded-xl">
           <Shield className="w-5 h-5 text-success" />
           <p className="text-sm text-muted-foreground">
-            {language === 'hi' 
+            {isHindi 
               ? 'आपका भुगतान 256-bit SSL से सुरक्षित है'
               : 'Your payment is secured with 256-bit SSL encryption'
             }
@@ -228,20 +193,28 @@ export default function Checkout() {
         {/* Pay Button */}
         <div className="fixed bottom-20 left-0 right-0 p-4 bg-background border-t border-border">
           <Button 
-            onClick={handlePayment}
+            onClick={handlePhonePePayment}
             disabled={isProcessing}
-            className="w-full btn-gold"
-            size="lg"
+            className="w-full btn-gold py-6 text-lg font-semibold shadow-lg"
           >
             {isProcessing ? (
               <div className="flex items-center gap-2">
-                <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
-                {t('processing')}
+                <Loader2 className="w-5 h-5 animate-spin" />
+                {isHindi ? 'प्रोसेसिंग...' : 'Processing...'}
               </div>
             ) : (
-              `${t('pay_now')} ₹${total}`
+              <>
+                {isHindi ? `₹${total} का भुगतान करें` : `Pay ₹${total}`}
+              </>
             )}
           </Button>
+          
+          <p className="text-center text-xs text-muted-foreground mt-3">
+            {isHindi 
+              ? 'पेमेंट पर क्लिक करके आप हमारी सेवा की शर्तों से सहमत हैं'
+              : 'By clicking Pay, you agree to our Terms of Service'
+            }
+          </p>
         </div>
       </div>
     </AppLayout>
