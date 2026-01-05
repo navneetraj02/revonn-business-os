@@ -35,6 +35,7 @@ import InvoiceDetail from "./pages/InvoiceDetail";
 import Staff from "./pages/Staff";
 import Marketing from "./pages/Marketing";
 import SubscriptionPlans from "./pages/SubscriptionPlans";
+import PaymentStatus from "./pages/PaymentStatus";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -123,6 +124,7 @@ function AppContent() {
       <Route path="/staff" element={isAuthenticated ? <Staff /> : <Navigate to="/auth" replace />} />
       <Route path="/marketing" element={isAuthenticated ? <Marketing /> : <Navigate to="/auth" replace />} />
       <Route path="/subscription" element={isAuthenticated ? <SubscriptionPlans /> : <Navigate to="/auth" replace />} />
+      <Route path="/payment-status" element={isAuthenticated ? <PaymentStatus /> : <Navigate to="/auth" replace />} />
       <Route path="*" element={<NotFound />} />
     </Routes>
   );
