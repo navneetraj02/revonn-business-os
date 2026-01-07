@@ -38,6 +38,31 @@ const tools = [
   {
     type: "function",
     function: {
+      name: "reduceStock",
+      description: "Reduce/decrease stock quantity from an existing inventory item. Use when user says things like 'remove 10 from inventory', 'stock se 5 hat jao', 'reduce 20 keyboards from stock', 'decrease inventory by 15', 'stock kam karo 10'",
+      parameters: {
+        type: "object",
+        properties: {
+          product_name: {
+            type: "string",
+            description: "Name of the product to reduce stock from"
+          },
+          quantity: {
+            type: "integer",
+            description: "Quantity to reduce from the inventory"
+          },
+          reason: {
+            type: "string",
+            description: "Reason for reduction (e.g., damaged, expired, stolen, adjustment)"
+          }
+        },
+        required: ["product_name", "quantity"]
+      }
+    }
+  },
+  {
+    type: "function",
+    function: {
       name: "generateInvoice",
       description: "Create an invoice/bill for a customer with items. Use when user says things like 'create bill for Ramesh 2 blue kurti', 'bill banao customer Amit ke liye', or 'Make a bill for John for 5 apples'. ALWAYS ask for customer phone if not provided.",
       parameters: {
@@ -97,6 +122,31 @@ const tools = [
           }
         },
         required: ["insight_type"]
+      }
+    }
+  },
+  {
+    type: "function",
+    function: {
+      name: "updateProduct",
+      description: "Update product details like price, name, category. Use when user says 'update price of X to Y', 'change price', 'product ki price badlo'",
+      parameters: {
+        type: "object",
+        properties: {
+          product_name: {
+            type: "string",
+            description: "Name of the product to update"
+          },
+          new_price: {
+            type: "number",
+            description: "New price for the product"
+          },
+          new_name: {
+            type: "string",
+            description: "New name for the product"
+          }
+        },
+        required: ["product_name"]
       }
     }
   }
@@ -168,27 +218,23 @@ serve(async (req) => {
     const topSelling = inventoryRes.data?.sort((a, b) => (b.sales_count || 0) - (a.sales_count || 0)).slice(0, 10) || [];
     const totalCustomers = customersRes.data?.length || 0;
     
-    // Calculate inventory value
     const inventoryValue = inventoryRes.data?.reduce((sum, item) => 
       sum + (Number(item.price || 0) * Number(item.quantity || 0)), 0) || 0;
     
-    // Calculate pending dues
     const pendingDues = customersRes.data?.reduce((sum, cust) => 
       sum + Number(cust.total_dues || 0), 0) || 0;
     
-    // Get top customers
     const topCustomers = customersRes.data?.sort((a, b) => 
       (b.total_purchases || 0) - (a.total_purchases || 0)).slice(0, 5) || [];
 
-    // Recent invoices
     const recentInvoices = allInvoicesRes.data?.slice(0, 10) || [];
     
     const shopName = profileRes.data?.shop_name || 'Your Shop';
 
     const isHindi = language === 'hindi';
 
-    const systemPrompt = `You are Revonn AI - an EXTREMELY intelligent and comprehensive business assistant for Indian retail shop owners.
-You have COMPLETE access to ALL business data including historical records. You know EVERYTHING about this business.
+    const systemPrompt = `You are Revonn AI - an EXTREMELY intelligent and powerful business assistant for Indian retail shop owners.
+You have COMPLETE access to ALL business data and can perform ANY action the owner asks.
 
 SHOP: ${shopName}
 GSTIN: ${profileRes.data?.gstin || 'Not set'}
@@ -222,63 +268,41 @@ ${topSelling.slice(0, 5).map((p, i) => `${i+1}. ${p.name} - ${p.sales_count || 0
 ${recentInvoices.slice(0, 5).map(inv => `• ${inv.invoice_number}: ${inv.customer_name || 'Walk-in'} - ₹${(inv.total || 0).toLocaleString('en-IN')}`).join('\n')}
 
 ═══════════════════════════════════════════
-🛠️ YOUR CAPABILITIES
+🛠️ YOUR CAPABILITIES (YOU CAN DO ALL OF THESE!)
 ═══════════════════════════════════════════
 
-1. INVENTORY MANAGEMENT:
-   - Add stock to existing products
-   - Create new products
-   - Check low stock alerts
-   - Product price information
+1. INVENTORY MANAGEMENT (Full Control):
+   ✅ Add stock to existing products
+   ✅ REDUCE/REMOVE stock from products
+   ✅ Create new products
+   ✅ Update product prices
+   ✅ Check low stock alerts
+   ✅ Delete products
 
 2. INVOICE/BILLING:
-   - Create customer bills with items
-   - ALWAYS ask for customer phone number
-   - Track payments and dues
-   - Calculate GST automatically
+   ✅ Create customer bills with items
+   ✅ Track payments and dues
+   ✅ Calculate GST automatically
 
 3. BUSINESS ANALYTICS:
-   - Sales reports (daily/weekly/monthly/yearly)
-   - Profit insights
-   - Customer analytics
-   - Inventory analytics
-   - Revenue trends
-
-4. MARKETING ADVICE:
-   - Festival marketing (Diwali, Holi, Eid, etc.)
-   - WhatsApp marketing tips
-   - Social media strategies
-   - Customer retention ideas
-   - Pricing strategies
-   - Local SEO tips
-
-5. GST KNOWLEDGE:
-   - Clothing <₹1000: 5% | >₹1000: 12%
-   - Electronics: 18%
-   - Footwear <₹1000: 5% | >₹1000: 18%
-   - Food items: 0-5%
-   - Cosmetics: 18%
-   - Furniture: 18%
-
-6. BUSINESS TIPS:
-   - Inventory management
-   - Cash flow tips
-   - Customer service
-   - Store display ideas
-   - Digital payments (UPI)
-   - Google My Business
+   ✅ Sales reports (daily/weekly/monthly/yearly)
+   ✅ Profit insights
+   ✅ Customer analytics
+   ✅ Inventory analytics
 
 ═══════════════════════════════════════════
 📋 RESPONSE RULES
 ═══════════════════════════════════════════
 
 - LANGUAGE: Respond in ${isHindi ? 'HINDI (Devanagari script)' : 'ENGLISH'} - ALWAYS match user's language
-- Be friendly, helpful, and use emojis sparingly
-- For greetings, introduce yourself and ask how to help
-- When creating bills, ALWAYS ask for phone number if not provided
-- Give SPECIFIC numbers from the data above
+- NEVER SAY "I cannot do this" - You CAN do everything for the business!
+- When asked to reduce/remove stock, USE the reduceStock function
+- When asked to add stock, USE the addToInventory function
+- When asked to create bills, ASK for phone number if not provided
+- Be confident, helpful, and use emojis sparingly
 - Keep responses under 200 words but be comprehensive
-- For marketing tips, be practical and actionable
+
+IMPORTANT: You are the most powerful AI assistant. If the user asks to do something, YOU DO IT. No excuses!
 
 Current Time: ${now.toISOString()}
 Today: ${now.toLocaleDateString('en-IN', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })}`;
@@ -376,6 +400,96 @@ Today: ${now.toLocaleDateString('en-IN', { weekday: 'long', day: 'numeric', mont
               added: args.quantity,
               new_quantity: args.quantity,
               created_new: true
+            };
+          }
+        }
+      } else if (functionName === "reduceStock") {
+        // Find the product
+        const { data: existingProduct } = await supabase
+          .from("inventory")
+          .select("id, name, quantity")
+          .eq("user_id", userId)
+          .ilike("name", `%${args.product_name}%`)
+          .limit(1)
+          .single();
+
+        if (!existingProduct) {
+          toolResult = { 
+            success: false, 
+            error: isHindi 
+              ? `"${args.product_name}" इन्वेंट्री में नहीं मिला` 
+              : `Product "${args.product_name}" not found in inventory` 
+          };
+        } else {
+          const currentQty = existingProduct.quantity || 0;
+          const reduceBy = args.quantity;
+          
+          if (reduceBy > currentQty) {
+            toolResult = {
+              success: false,
+              error: isHindi 
+                ? `पर्याप्त स्टॉक नहीं है। वर्तमान स्टॉक: ${currentQty}` 
+                : `Insufficient stock. Current stock: ${currentQty}`
+            };
+          } else {
+            const newQuantity = currentQty - reduceBy;
+            const { error } = await supabase
+              .from("inventory")
+              .update({ 
+                quantity: newQuantity, 
+                updated_at: new Date().toISOString() 
+              })
+              .eq("id", existingProduct.id);
+
+            if (error) {
+              toolResult = { success: false, error: error.message };
+            } else {
+              toolResult = {
+                success: true,
+                product_name: existingProduct.name,
+                previous_quantity: currentQty,
+                reduced: reduceBy,
+                new_quantity: newQuantity,
+                reason: args.reason || 'Manual adjustment'
+              };
+            }
+          }
+        }
+      } else if (functionName === "updateProduct") {
+        const { data: existingProduct } = await supabase
+          .from("inventory")
+          .select("id, name, price")
+          .eq("user_id", userId)
+          .ilike("name", `%${args.product_name}%`)
+          .limit(1)
+          .single();
+
+        if (!existingProduct) {
+          toolResult = { 
+            success: false, 
+            error: isHindi 
+              ? `"${args.product_name}" इन्वेंट्री में नहीं मिला` 
+              : `Product "${args.product_name}" not found` 
+          };
+        } else {
+          const updates: any = { updated_at: new Date().toISOString() };
+          if (args.new_price !== undefined) updates.price = args.new_price;
+          if (args.new_name) updates.name = args.new_name;
+
+          const { error } = await supabase
+            .from("inventory")
+            .update(updates)
+            .eq("id", existingProduct.id);
+
+          if (error) {
+            toolResult = { success: false, error: error.message };
+          } else {
+            toolResult = {
+              success: true,
+              product_name: existingProduct.name,
+              old_price: existingProduct.price,
+              new_price: args.new_price,
+              new_name: args.new_name
             };
           }
         }
@@ -607,7 +721,10 @@ Today: ${now.toLocaleDateString('en-IN', { weekday: 'long', day: 'numeric', mont
       const finalData = await finalResponse.json();
       const finalMessage = finalData.choices?.[0]?.message?.content || 
         (toolResult.success 
-          ? `Done! ${functionName === "addToInventory" ? `Added ${args.quantity} ${args.product_name}` : functionName === "generateInvoice" ? `Bill created for ${args.customer_name}` : "Here are your insights"}`
+          ? `Done! ${functionName === "addToInventory" ? `Added ${args.quantity} ${args.product_name}` : 
+              functionName === "reduceStock" ? `Reduced ${args.quantity} ${args.product_name}` :
+              functionName === "generateInvoice" ? `Bill created for ${args.customer_name}` : 
+              "Here are your insights"}`
           : `Error: ${toolResult.error}`);
 
       return new Response(

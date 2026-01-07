@@ -14,6 +14,7 @@ import {
 import { AppLayout } from '@/components/layout/AppLayout';
 import { supabase } from '@/integrations/supabase/client';
 import { useAppStore } from '@/store/app-store';
+import { useLanguage } from '@/contexts/LanguageContext';
 import jsPDF from 'jspdf';
 import { toast } from 'sonner';
 
@@ -23,6 +24,13 @@ const formatCurrency = (amount: number) => {
     currency: 'INR',
     minimumFractionDigits: 0
   }).format(amount);
+};
+
+const formatNumber = (num: number) => {
+  return new Intl.NumberFormat('en-IN', {
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2
+  }).format(num);
 };
 
 interface InvoiceData {
@@ -46,6 +54,8 @@ export default function InvoiceDetail() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const { shopSettings } = useAppStore();
+  const { t, language } = useLanguage();
+  const isHindi = language === 'hi';
   const [invoice, setInvoice] = useState<InvoiceData | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 
@@ -57,7 +67,6 @@ export default function InvoiceDetail() {
 
   const loadInvoice = async (invoiceId: string) => {
     try {
-      // Load from Supabase instead of IndexedDB
       const { data, error } = await supabase
         .from('invoices')
         .select('*')
@@ -68,7 +77,6 @@ export default function InvoiceDetail() {
         console.error('Error loading invoice:', error);
         setInvoice(null);
       } else if (data) {
-        // Parse items if it's a string
         const items = typeof data.items === 'string' ? JSON.parse(data.items) : (Array.isArray(data.items) ? data.items : []);
         setInvoice({ ...data, items } as InvoiceData);
       }
@@ -84,112 +92,259 @@ export default function InvoiceDetail() {
     if (!invoice) return null;
 
     const doc = new jsPDF();
+    const pageWidth = doc.internal.pageSize.getWidth();
+    const margin = 15;
+    const contentWidth = pageWidth - (margin * 2);
     
-    // Header
-    doc.setFontSize(20);
+    // Colors
+    const primaryColor = [218, 165, 32]; // Gold
+    const darkColor = [33, 33, 33];
+    const grayColor = [128, 128, 128];
+    
+    let y = margin;
+
+    // ===== HEADER: REVONN BRANDING =====
+    doc.setFillColor(primaryColor[0], primaryColor[1], primaryColor[2]);
+    doc.rect(0, 0, pageWidth, 35, 'F');
+    
+    doc.setTextColor(255, 255, 255);
+    doc.setFontSize(28);
     doc.setFont('helvetica', 'bold');
-    doc.text(shopSettings.shopName || 'Revonn Store', 105, 20, { align: 'center' });
+    doc.text('REVONN', pageWidth / 2, 18, { align: 'center' });
+    
     doc.setFontSize(10);
     doc.setFont('helvetica', 'normal');
+    doc.text('AI-Powered Business OS', pageWidth / 2, 28, { align: 'center' });
+    
+    y = 45;
+
+    // ===== STORE DETAILS =====
+    doc.setTextColor(darkColor[0], darkColor[1], darkColor[2]);
+    doc.setFontSize(18);
+    doc.setFont('helvetica', 'bold');
+    doc.text(shopSettings.shopName || 'Your Store', pageWidth / 2, y, { align: 'center' });
+    y += 7;
+    
+    doc.setFontSize(10);
+    doc.setFont('helvetica', 'normal');
+    doc.setTextColor(grayColor[0], grayColor[1], grayColor[2]);
+    
     if (shopSettings.address) {
-      doc.text(shopSettings.address, 105, 28, { align: 'center' });
-    }
-    if (shopSettings.gstin) {
-      doc.text(`GSTIN: ${shopSettings.gstin}`, 105, 34, { align: 'center' });
+      doc.text(shopSettings.address, pageWidth / 2, y, { align: 'center' });
+      y += 5;
     }
     if (shopSettings.phone) {
-      doc.text(`Phone: ${shopSettings.phone}`, 105, 40, { align: 'center' });
+      doc.text(`Phone: ${shopSettings.phone}`, pageWidth / 2, y, { align: 'center' });
+      y += 5;
+    }
+    if (shopSettings.gstin) {
+      doc.text(`GSTIN: ${shopSettings.gstin}`, pageWidth / 2, y, { align: 'center' });
+      y += 5;
     }
     
-    // Invoice title
-    doc.setFontSize(16);
-    doc.setFont('helvetica', 'bold');
-    doc.text('TAX INVOICE', 105, 52, { align: 'center' });
+    y += 5;
     
-    // Invoice details
+    // ===== TAX INVOICE TITLE =====
+    doc.setTextColor(darkColor[0], darkColor[1], darkColor[2]);
+    doc.setFillColor(245, 245, 245);
+    doc.rect(margin, y, contentWidth, 10, 'F');
+    doc.setFontSize(12);
+    doc.setFont('helvetica', 'bold');
+    doc.text('TAX INVOICE', pageWidth / 2, y + 7, { align: 'center' });
+    y += 18;
+    
+    // ===== INVOICE DETAILS ROW =====
     doc.setFontSize(10);
     doc.setFont('helvetica', 'normal');
-    doc.text(`Invoice No: ${invoice.invoice_number}`, 20, 65);
-    doc.text(`Date: ${new Date(invoice.created_at).toLocaleDateString('en-IN')}`, 150, 65);
-    
-    // Customer details
-    if (invoice.customer_name) {
-      doc.setFont('helvetica', 'bold');
-      doc.text('Bill To:', 20, 78);
-      doc.setFont('helvetica', 'normal');
-      doc.text(invoice.customer_name, 20, 85);
-      if (invoice.customer_phone) {
-        doc.text(`Phone: ${invoice.customer_phone}`, 20, 91);
-      }
-    }
-    
-    // Items table
-    let y = 105;
-    doc.setFillColor(218, 165, 32);
-    doc.rect(20, y, 170, 10, 'F');
-    doc.setTextColor(255, 255, 255);
+    doc.setTextColor(grayColor[0], grayColor[1], grayColor[2]);
+    doc.text('Invoice No:', margin, y);
+    doc.setTextColor(darkColor[0], darkColor[1], darkColor[2]);
     doc.setFont('helvetica', 'bold');
-    doc.text('Item', 22, y + 7);
-    doc.text('Size', 85, y + 7);
-    doc.text('Qty', 110, y + 7);
-    doc.text('Rate', 130, y + 7);
-    doc.text('Amount', 160, y + 7);
-    doc.setTextColor(0, 0, 0);
-    doc.setFont('helvetica', 'normal');
+    doc.text(invoice.invoice_number, margin + 25, y);
     
-    y += 15;
+    doc.setFont('helvetica', 'normal');
+    doc.setTextColor(grayColor[0], grayColor[1], grayColor[2]);
+    const dateText = `Date: ${new Date(invoice.created_at).toLocaleDateString('en-IN', {
+      day: '2-digit',
+      month: 'short',
+      year: 'numeric'
+    })}`;
+    doc.text(dateText, pageWidth - margin - doc.getTextWidth(dateText), y);
+    y += 12;
+    
+    // ===== CUSTOMER DETAILS =====
+    doc.setFillColor(250, 250, 250);
+    doc.rect(margin, y - 3, contentWidth, 25, 'F');
+    doc.setDrawColor(220, 220, 220);
+    doc.rect(margin, y - 3, contentWidth, 25, 'S');
+    
+    doc.setTextColor(grayColor[0], grayColor[1], grayColor[2]);
+    doc.setFont('helvetica', 'normal');
+    doc.setFontSize(9);
+    doc.text('BILL TO:', margin + 5, y + 3);
+    
+    doc.setTextColor(darkColor[0], darkColor[1], darkColor[2]);
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(11);
+    doc.text(invoice.customer_name || 'Walk-in Customer', margin + 5, y + 11);
+    
+    if (invoice.customer_phone) {
+      doc.setFont('helvetica', 'normal');
+      doc.setFontSize(10);
+      doc.text(`Phone: ${invoice.customer_phone}`, margin + 5, y + 18);
+    }
+    y += 30;
+    
+    // ===== ITEMS TABLE HEADER =====
+    doc.setFillColor(primaryColor[0], primaryColor[1], primaryColor[2]);
+    doc.rect(margin, y, contentWidth, 10, 'F');
+    
+    doc.setTextColor(255, 255, 255);
+    doc.setFontSize(9);
+    doc.setFont('helvetica', 'bold');
+    
+    const colWidths = {
+      item: 70,
+      size: 25,
+      qty: 20,
+      rate: 30,
+      amount: 35
+    };
+    
+    let colX = margin + 3;
+    doc.text('Item', colX, y + 7);
+    colX += colWidths.item;
+    doc.text('Size', colX, y + 7);
+    colX += colWidths.size;
+    doc.text('Qty', colX, y + 7);
+    colX += colWidths.qty;
+    doc.text('Rate', colX, y + 7);
+    colX += colWidths.rate;
+    doc.text('Amount', colX, y + 7);
+    y += 12;
+    
+    // ===== ITEMS TABLE BODY =====
     const items = Array.isArray(invoice.items) ? invoice.items : [];
-    items.forEach((item: any) => {
+    doc.setTextColor(darkColor[0], darkColor[1], darkColor[2]);
+    doc.setFont('helvetica', 'normal');
+    doc.setFontSize(10);
+    
+    items.forEach((item: any, index: number) => {
       const itemName = (item.itemName || item.name || 'Item').substring(0, 30);
-      doc.text(itemName, 22, y);
-      doc.text(item.size || '-', 85, y);
-      doc.text((item.quantity || 1).toString(), 110, y);
-      doc.text(formatCurrency(item.unitPrice || item.price || 0).replace('₹', ''), 130, y);
-      doc.text(formatCurrency(item.total || (item.quantity * item.unitPrice) || 0).replace('₹', ''), 160, y);
+      const size = item.size || '-';
+      const qty = item.quantity || 1;
+      const rate = item.unitPrice || item.price || 0;
+      const amount = item.total || (qty * rate);
+      
+      // Alternate row background
+      if (index % 2 === 0) {
+        doc.setFillColor(252, 252, 252);
+        doc.rect(margin, y - 3, contentWidth, 8, 'F');
+      }
+      
+      colX = margin + 3;
+      doc.text(itemName, colX, y + 2);
+      colX += colWidths.item;
+      doc.text(size, colX, y + 2);
+      colX += colWidths.size;
+      doc.text(qty.toString(), colX, y + 2);
+      colX += colWidths.qty;
+      doc.text(formatNumber(rate), colX, y + 2);
+      colX += colWidths.rate;
+      doc.text(formatNumber(amount), colX, y + 2);
       y += 8;
     });
     
-    // Totals
     y += 5;
-    doc.line(20, y, 190, y);
+    
+    // ===== SEPARATOR LINE =====
+    doc.setDrawColor(220, 220, 220);
+    doc.line(margin, y, pageWidth - margin, y);
     y += 10;
     
-    doc.text('Subtotal:', 130, y);
-    doc.text(formatCurrency(invoice.subtotal || invoice.total), 160, y);
+    // ===== TOTALS SECTION =====
+    const totalsX = pageWidth - margin - 80;
     
+    // Subtotal
+    doc.setTextColor(grayColor[0], grayColor[1], grayColor[2]);
+    doc.setFont('helvetica', 'normal');
+    doc.text('Subtotal:', totalsX, y);
+    doc.setTextColor(darkColor[0], darkColor[1], darkColor[2]);
+    doc.text(`₹${formatNumber(invoice.subtotal || invoice.total)}`, totalsX + 50, y);
+    y += 7;
+    
+    // Discount
     if (invoice.discount > 0) {
-      y += 8;
-      doc.text('Discount:', 130, y);
-      doc.text(`-${formatCurrency(invoice.discount)}`, 160, y);
+      doc.setTextColor(46, 125, 50); // Green
+      doc.text('Discount:', totalsX, y);
+      doc.text(`-₹${formatNumber(invoice.discount)}`, totalsX + 50, y);
+      y += 7;
     }
     
+    // Tax
     if (invoice.tax_amount > 0) {
-      y += 8;
-      doc.text('GST:', 130, y);
-      doc.text(formatCurrency(invoice.tax_amount), 160, y);
+      doc.setTextColor(grayColor[0], grayColor[1], grayColor[2]);
+      doc.text('GST:', totalsX, y);
+      doc.setTextColor(darkColor[0], darkColor[1], darkColor[2]);
+      doc.text(`₹${formatNumber(invoice.tax_amount)}`, totalsX + 50, y);
+      y += 7;
     }
     
-    y += 12;
+    y += 3;
+    
+    // Grand Total Box
+    doc.setFillColor(primaryColor[0], primaryColor[1], primaryColor[2]);
+    doc.rect(totalsX - 5, y - 5, 85, 14, 'F');
+    doc.setTextColor(255, 255, 255);
     doc.setFont('helvetica', 'bold');
-    doc.setFontSize(12);
-    doc.text('Grand Total:', 130, y);
-    doc.text(formatCurrency(invoice.total), 160, y);
+    doc.setFontSize(11);
+    doc.text('GRAND TOTAL:', totalsX, y + 4);
+    doc.text(`₹${formatNumber(invoice.total)}`, totalsX + 50, y + 4);
+    y += 18;
     
-    // Payment info
-    y += 10;
-    doc.setFontSize(9);
+    // ===== PAYMENT INFO =====
+    doc.setTextColor(darkColor[0], darkColor[1], darkColor[2]);
     doc.setFont('helvetica', 'normal');
-    doc.text(`Payment: ${(invoice.payment_mode || 'cash').toUpperCase()}`, 20, y);
-    if (invoice.due_amount > 0) {
-      doc.text(`Due: ${formatCurrency(invoice.due_amount)}`, 100, y);
+    doc.setFontSize(9);
+    
+    const paymentY = y;
+    doc.text(`Payment: ${(invoice.payment_mode || 'cash').toUpperCase()}`, margin, paymentY);
+    
+    if (invoice.amount_paid > 0) {
+      doc.text(`Paid: ₹${formatNumber(invoice.amount_paid)}`, margin + 60, paymentY);
     }
-    doc.text(`Status: ${(invoice.status || 'completed').toUpperCase()}`, 150, y);
     
-    // Footer
+    if (invoice.due_amount > 0) {
+      doc.setTextColor(211, 47, 47); // Red
+      doc.text(`Due: ₹${formatNumber(invoice.due_amount)}`, margin + 110, paymentY);
+    }
+    
+    const statusText = `Status: ${(invoice.status || 'completed').toUpperCase()}`;
+    doc.setTextColor(invoice.status === 'completed' ? 46 : 255, invoice.status === 'completed' ? 125 : 152, invoice.status === 'completed' ? 50 : 0);
+    doc.text(statusText, pageWidth - margin - doc.getTextWidth(statusText), paymentY);
+    
+    y += 15;
+    
+    // ===== THANK YOU MESSAGE =====
+    doc.setTextColor(grayColor[0], grayColor[1], grayColor[2]);
+    doc.setFont('helvetica', 'italic');
+    doc.setFontSize(10);
+    doc.text('Thank you for your business!', pageWidth / 2, y, { align: 'center' });
+    
+    // ===== FOOTER =====
+    const footerY = doc.internal.pageSize.getHeight() - 15;
+    doc.setDrawColor(primaryColor[0], primaryColor[1], primaryColor[2]);
+    doc.line(margin, footerY - 5, pageWidth - margin, footerY - 5);
+    
+    doc.setTextColor(primaryColor[0], primaryColor[1], primaryColor[2]);
+    doc.setFont('helvetica', 'bold');
     doc.setFontSize(9);
+    doc.text('Powered by Revonn', pageWidth / 2, footerY, { align: 'center' });
+    
+    doc.setTextColor(grayColor[0], grayColor[1], grayColor[2]);
     doc.setFont('helvetica', 'normal');
-    doc.text('Thank you for your business!', 105, 270, { align: 'center' });
-    doc.text('Powered by Revonn', 105, 276, { align: 'center' });
+    doc.setFontSize(7);
+    doc.text('www.revonn.app | AI-Powered Business OS for Indian SMBs', pageWidth / 2, footerY + 5, { align: 'center' });
     
     return doc.output('blob');
   };
@@ -203,7 +358,7 @@ export default function InvoiceDetail() {
       a.download = `${invoice.invoice_number}.pdf`;
       a.click();
       URL.revokeObjectURL(url);
-      toast.success('Invoice downloaded!');
+      toast.success(isHindi ? 'इनवॉयस डाउनलोड हो गया!' : 'Invoice downloaded!');
     }
   };
 
@@ -217,7 +372,6 @@ export default function InvoiceDetail() {
           files: [new File([pdfBlob], `${invoice.invoice_number}.pdf`, { type: 'application/pdf' })]
         });
       } catch (error) {
-        // Fallback to download if share fails
         handleDownload();
       }
     }
@@ -225,7 +379,7 @@ export default function InvoiceDetail() {
 
   if (isLoading) {
     return (
-      <AppLayout title="Invoice" hideNav>
+      <AppLayout title={t('invoice')} hideNav>
         <div className="flex items-center justify-center h-64">
           <div className="w-8 h-8 border-2 border-primary border-t-transparent rounded-full animate-spin" />
         </div>
@@ -235,16 +389,18 @@ export default function InvoiceDetail() {
 
   if (!invoice) {
     return (
-      <AppLayout title="Invoice" hideNav>
+      <AppLayout title={t('invoice')} hideNav>
         <div className="text-center py-12">
           <FileText className="w-12 h-12 text-muted-foreground mx-auto mb-3" />
-          <h3 className="font-semibold text-foreground">Invoice not found</h3>
-          <p className="text-sm text-muted-foreground mt-1">This invoice may have been deleted or doesn't exist.</p>
+          <h3 className="font-semibold text-foreground">{t('invoice_not_found')}</h3>
+          <p className="text-sm text-muted-foreground mt-1">
+            {isHindi ? 'यह इनवॉयस मौजूद नहीं है।' : 'This invoice may have been deleted or doesn\'t exist.'}
+          </p>
           <button 
             onClick={() => navigate(-1)}
             className="mt-4 text-primary font-medium"
           >
-            Go back
+            {t('back')}
           </button>
         </div>
       </AppLayout>
@@ -254,7 +410,7 @@ export default function InvoiceDetail() {
   const items = Array.isArray(invoice.items) ? invoice.items : [];
 
   return (
-    <AppLayout title="Invoice Details" hideNav>
+    <AppLayout title={t('invoice_details') || 'Invoice Details'} hideNav>
       <div className="px-4 py-4 space-y-4">
         {/* Header */}
         <div className="flex items-center justify-between">
@@ -268,7 +424,7 @@ export default function InvoiceDetail() {
             <div>
               <h1 className="text-xl font-bold text-foreground">{invoice.invoice_number}</h1>
               <p className="text-sm text-muted-foreground">
-                {new Date(invoice.created_at).toLocaleDateString('en-IN', {
+                {new Date(invoice.created_at).toLocaleDateString(isHindi ? 'hi-IN' : 'en-IN', {
                   day: 'numeric',
                   month: 'short',
                   year: 'numeric',
@@ -302,7 +458,7 @@ export default function InvoiceDetail() {
             </div>
             <div>
               <p className="font-semibold text-foreground">
-                {invoice.customer_name || 'Walk-in Customer'}
+                {invoice.customer_name || t('walk_in_customer')}
               </p>
               {invoice.customer_phone && (
                 <p className="text-sm text-muted-foreground flex items-center gap-1">
@@ -319,7 +475,7 @@ export default function InvoiceDetail() {
           <div className="px-4 py-3 bg-secondary/50 border-b border-border">
             <h3 className="font-semibold text-foreground flex items-center gap-2">
               <Package className="w-4 h-4" />
-              Items ({items.length})
+              {t('items')} ({items.length})
             </h3>
           </div>
           <div className="divide-y divide-border">
@@ -328,7 +484,7 @@ export default function InvoiceDetail() {
                 <div>
                   <p className="font-medium text-foreground">{item.itemName || item.name || 'Item'}</p>
                   <p className="text-sm text-muted-foreground">
-                    {item.size && `Size: ${item.size} • `}
+                    {item.size && `${t('size')}: ${item.size} • `}
                     {formatCurrency(item.unitPrice || item.price || 0)} × {item.quantity || 1}
                   </p>
                 </div>
@@ -342,17 +498,17 @@ export default function InvoiceDetail() {
         <div className="bg-card rounded-2xl border border-border p-4 space-y-3">
           <h3 className="font-semibold text-foreground flex items-center gap-2 mb-4">
             <IndianRupee className="w-4 h-4" />
-            Bill Summary
+            {t('bill_summary')}
           </h3>
           
           <div className="flex justify-between text-sm">
-            <span className="text-muted-foreground">Subtotal</span>
+            <span className="text-muted-foreground">{t('subtotal')}</span>
             <span>{formatCurrency(invoice.subtotal || invoice.total)}</span>
           </div>
           
           {invoice.discount > 0 && (
             <div className="flex justify-between text-sm text-success">
-              <span>Discount</span>
+              <span>{t('discount')}</span>
               <span>-{formatCurrency(invoice.discount)}</span>
             </div>
           )}
@@ -365,25 +521,25 @@ export default function InvoiceDetail() {
           )}
           
           <div className="pt-3 border-t border-border flex justify-between">
-            <span className="text-lg font-bold text-foreground">Grand Total</span>
+            <span className="text-lg font-bold text-foreground">{t('grand_total')}</span>
             <span className="text-lg font-bold text-primary">{formatCurrency(invoice.total)}</span>
           </div>
           
           <div className="flex justify-between text-sm pt-2">
-            <span className="text-muted-foreground">Payment Method</span>
+            <span className="text-muted-foreground">{t('payment_mode')}</span>
             <span className="capitalize font-medium">{invoice.payment_mode || 'cash'}</span>
           </div>
           
           {invoice.amount_paid > 0 && (
             <div className="flex justify-between text-sm">
-              <span className="text-muted-foreground">Amount Paid</span>
+              <span className="text-muted-foreground">{t('amount_received')}</span>
               <span className="font-medium text-success">{formatCurrency(invoice.amount_paid)}</span>
             </div>
           )}
           
           {invoice.due_amount > 0 && (
             <div className="flex justify-between text-sm">
-              <span className="text-muted-foreground">Due Amount</span>
+              <span className="text-muted-foreground">{t('due')}</span>
               <span className="font-medium text-destructive">{formatCurrency(invoice.due_amount)}</span>
             </div>
           )}
@@ -403,14 +559,14 @@ export default function InvoiceDetail() {
             className="flex-1 py-3 px-4 rounded-xl bg-secondary text-secondary-foreground font-medium flex items-center justify-center gap-2"
           >
             <Download className="w-4 h-4" />
-            Download PDF
+            {t('download_pdf')}
           </button>
           <button
             onClick={handleShare}
             className="flex-1 py-3 px-4 rounded-xl btn-gold font-medium flex items-center justify-center gap-2"
           >
             <Share2 className="w-4 h-4" />
-            Share via WhatsApp
+            {t('share_whatsapp')}
           </button>
         </div>
       </div>
