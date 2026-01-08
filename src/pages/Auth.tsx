@@ -115,7 +115,7 @@ export default function Auth() {
 
         if (error) {
           if (error.message.includes('already registered')) {
-            toast.error(isHindi ? 'यह फ़ोन नंबर पहले से पंजीकृत है। कृपया लॉगिन करें।' : 'This phone number is already registered. Please login.');
+            toast.error(isHindi ? 'यह फ़ोन नंबर पहले से पंजीकृत है। कृपया लॉगिन करें।' : 'This phone number is al[...]
             setIsLogin(true);
           } else {
             toast.error(error.message);
@@ -123,7 +123,7 @@ export default function Auth() {
           return;
         }
 
-        toast.success(isHindi ? 'खाता बन गया! Revonn डेमो मोड में आपका स्वागत है।' : 'Account created! Welcome to Revonn Demo Mode.');
+        toast.success(isHindi ? 'खाता बन गया! Revonn डेमो मोड में आपका स्वागत है।' : 'Account created! Welcome to Revonn Demo Mode.[...]
       }
     } catch (error) {
       console.error('Auth error:', error);
@@ -144,69 +144,45 @@ export default function Auth() {
     setIsLoading(true);
 
     try {
-      // First, find the owner by their phone number to get their user_id
-      const ownerEmail = `${staffLoginData.storePhone}@revonn.app`;
-      
-      // We need to find the staff member that belongs to this store
-      // Using a service role query through an edge function would be more secure
-      // But for now, we'll use the staff table's RLS policy that allows staff to view by username
-      const { data: staffData, error: staffError } = await supabase
-        .from('staff')
-        .select('id, name, username, password_hash, permissions, user_id, is_active')
-        .eq('username', staffLoginData.username)
-        .single();
-
-      if (staffError || !staffData) {
-        toast.error(isHindi ? 'गलत यूज़रनेम या पासवर्ड' : 'Invalid username or password');
-        setIsLoading(false);
-        return;
-      }
-
-      // Verify password (base64 encoded)
+      // Use the staff_login RPC to avoid RLS issues. The RPC runs as a SECURITY DEFINER
+      // and returns a JSON object with { success: boolean, data?: {...}, error?: string }
       const passwordHash = btoa(staffLoginData.password);
-      if (staffData.password_hash !== passwordHash) {
-        toast.error(isHindi ? 'गलत यूज़रनेम या पासवर्ड' : 'Invalid username or password');
+
+      const { data: rpcResult, error: rpcError } = await supabase.rpc('staff_login', {
+        p_store_phone: staffLoginData.storePhone,
+        p_username: staffLoginData.username,
+        p_password_hash: passwordHash
+      });
+
+      if (rpcError) {
+        console.error('RPC error:', rpcError);
+        toast.error(isHindi ? 'लॉगिन में त्रुटि' : 'Login error');
         setIsLoading(false);
         return;
       }
 
-      // Verify the staff belongs to the correct store by checking owner's phone
-      const { data: profileData } = await supabase
-        .from('profiles')
-        .select('phone, shop_name')
-        .eq('user_id', staffData.user_id)
-        .single();
-
-      if (!profileData || profileData.phone !== staffLoginData.storePhone) {
-        toast.error(isHindi ? 'गलत स्टोर फ़ोन नंबर' : 'Invalid store phone number');
+      // rpcResult is expected to be the JSON returned by the function
+      if (!rpcResult || rpcResult.success !== true) {
+        const errMsg = rpcResult?.error || (isHindi ? 'गलत यूज़रनेम या पासवर्ड' : 'Invalid username or password');
+        toast.error(errMsg);
         setIsLoading(false);
         return;
       }
 
-      if (!staffData.is_active) {
-        toast.error(isHindi ? 'आपका खाता निष्क्रिय है। मालिक से संपर्क करें।' : 'Your account is inactive. Contact the owner.');
-        setIsLoading(false);
-        return;
-      }
+      const staffData = rpcResult.data;
 
-      // Store staff session in localStorage
+      // Build and store staff session
       const staffSession = {
         staffId: staffData.id,
         staffName: staffData.name,
         username: staffData.username,
         ownerId: staffData.user_id,
-        shopName: profileData.shop_name,
+        shopName: staffData.shop_name,
         permissions: staffData.permissions,
         loginTime: new Date().toISOString()
       };
 
       localStorage.setItem('revonn-staff-session', JSON.stringify(staffSession));
-      
-      // Update last_login in staff table
-      await supabase
-        .from('staff')
-        .update({ last_login: new Date().toISOString() })
-        .eq('id', staffData.id);
 
       toast.success(isHindi ? `स्वागत है, ${staffData.name}!` : `Welcome, ${staffData.name}!`);
       navigate('/');
@@ -537,7 +513,7 @@ export default function Auth() {
           <Link to="/policy/privacy" className="text-primary hover:underline">
             {isHindi ? 'गोपनीयता नीति' : 'Privacy Policy'}
           </Link>
-          <span className="text-muted-foreground">•</span>
+          <span className="text-muted-foreground">��</span>
           <Link to="/policy/refund" className="text-primary hover:underline">
             {isHindi ? 'रिफंड नीति' : 'Refund Policy'}
           </Link>
