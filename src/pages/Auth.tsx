@@ -115,7 +115,7 @@ export default function Auth() {
 
         if (error) {
           if (error.message.includes('already registered')) {
-            toast.error(isHindi ? 'यह फ़ोन नंबर पहले से पंजीकृत है। कृपया लॉगिन करें।' : 'This phone number is al[...]
+            toast.error(isHindi ? 'यह फ़ोन नंबर पहले से पंजीकृत है। कृपया लॉगिन करें।' : 'This phone number is already registered. Please login.');
             setIsLogin(true);
           } else {
             toast.error(error.message);
@@ -123,7 +123,7 @@ export default function Auth() {
           return;
         }
 
-        toast.success(isHindi ? 'खाता बन गया! Revonn डेमो मोड में आपका स्वागत है।' : 'Account created! Welcome to Revonn Demo Mode.[...]
+        toast.success(isHindi ? 'खाता बन गया! Revonn डेमो मोड में आपका स्वागत है।' : 'Account created! Welcome to Revonn Demo Mode.');
       }
     } catch (error) {
       console.error('Auth error:', error);
@@ -162,14 +162,15 @@ export default function Auth() {
       }
 
       // rpcResult is expected to be the JSON returned by the function
-      if (!rpcResult || rpcResult.success !== true) {
-        const errMsg = rpcResult?.error || (isHindi ? 'गलत यूज़रनेम या पासवर्ड' : 'Invalid username or password');
+      const result = rpcResult as { success?: boolean; error?: string; data?: any };
+      if (!result || result.success !== true) {
+        const errMsg = result?.error || (isHindi ? 'गलत यूज़रनेम या पासवर्ड' : 'Invalid username or password');
         toast.error(errMsg);
         setIsLoading(false);
         return;
       }
 
-      const staffData = rpcResult.data;
+      const staffData = result.data;
 
       // Build and store staff session
       const staffSession = {

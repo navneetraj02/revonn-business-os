@@ -445,6 +445,14 @@ export type Database = {
         Args: { p_limit_type: string; p_user_id: string }
         Returns: undefined
       }
+      staff_login: {
+        Args: {
+          p_password_hash: string
+          p_store_phone: string
+          p_username: string
+        }
+        Returns: Json
+      }
     }
     Enums: {
       [_ in never]: never
