@@ -8,28 +8,20 @@ const corsHeaders = {
 
 const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
 
-// Tool definitions for function calling
+// Tool definitions for function calling - Super Advanced AI
 const tools = [
   {
     type: "function",
     function: {
       name: "addToInventory",
-      description: "Add stock quantity to an existing inventory item or create a new item. Use when user says things like 'add 50 keyboards to inventory', 'stock mein 100 jeans add karo', or 'Add 100 Red Pens'",
+      description: "Add stock quantity to an existing inventory item or create a new item. Use when user says things like 'add 50 keyboards to inventory', 'stock mein 100 jeans add karo', 'Add 100 Red Pens', or when analyzing a product image",
       parameters: {
         type: "object",
         properties: {
-          product_name: {
-            type: "string",
-            description: "Name of the product to add stock to"
-          },
-          quantity: {
-            type: "integer",
-            description: "Quantity to add to the inventory"
-          },
-          price: {
-            type: "number",
-            description: "Price per unit (optional, for new items)"
-          }
+          product_name: { type: "string", description: "Name of the product to add stock to" },
+          quantity: { type: "integer", description: "Quantity to add to the inventory" },
+          price: { type: "number", description: "Price per unit (optional, for new items)" },
+          category: { type: "string", description: "Product category (optional)" }
         },
         required: ["product_name", "quantity"]
       }
@@ -39,22 +31,13 @@ const tools = [
     type: "function",
     function: {
       name: "reduceStock",
-      description: "Reduce/decrease stock quantity from an existing inventory item. Use when user says things like 'remove 10 from inventory', 'stock se 5 hat jao', 'reduce 20 keyboards from stock', 'decrease inventory by 15', 'stock kam karo 10'",
+      description: "Reduce/decrease stock quantity from an existing inventory item. Use when user says 'remove 10 from inventory', 'stock se 5 hat jao', 'reduce 20 keyboards from stock'",
       parameters: {
         type: "object",
         properties: {
-          product_name: {
-            type: "string",
-            description: "Name of the product to reduce stock from"
-          },
-          quantity: {
-            type: "integer",
-            description: "Quantity to reduce from the inventory"
-          },
-          reason: {
-            type: "string",
-            description: "Reason for reduction (e.g., damaged, expired, stolen, adjustment)"
-          }
+          product_name: { type: "string", description: "Name of the product to reduce stock from" },
+          quantity: { type: "integer", description: "Quantity to reduce from the inventory" },
+          reason: { type: "string", description: "Reason for reduction (e.g., damaged, expired, stolen, adjustment)" }
         },
         required: ["product_name", "quantity"]
       }
@@ -63,19 +46,27 @@ const tools = [
   {
     type: "function",
     function: {
-      name: "generateInvoice",
-      description: "Create an invoice/bill for a customer with items. Use when user says things like 'create bill for Ramesh 2 blue kurti', 'bill banao customer Amit ke liye', or 'Make a bill for John for 5 apples'. ALWAYS ask for customer phone if not provided.",
+      name: "deleteProduct",
+      description: "Completely delete a product from inventory. Use when user says 'delete product X', 'X ko hata do', 'remove X from inventory permanently'",
       parameters: {
         type: "object",
         properties: {
-          customer_name: {
-            type: "string",
-            description: "Name of the customer"
-          },
-          customer_phone: {
-            type: "string",
-            description: "10-digit phone number of the customer"
-          },
+          product_name: { type: "string", description: "Name of the product to delete" }
+        },
+        required: ["product_name"]
+      }
+    }
+  },
+  {
+    type: "function",
+    function: {
+      name: "generateInvoice",
+      description: "Create an invoice/bill for a customer with items. Use when user says 'create bill for Ramesh 2 blue kurti', 'bill banao'. ALWAYS ask for customer phone if not provided.",
+      parameters: {
+        type: "object",
+        properties: {
+          customer_name: { type: "string", description: "Name of the customer" },
+          customer_phone: { type: "string", description: "10-digit phone number of the customer" },
           items: {
             type: "array",
             description: "List of items to bill",
@@ -88,15 +79,8 @@ const tools = [
               required: ["product_name", "quantity"]
             }
           },
-          payment_mode: {
-            type: "string",
-            enum: ["cash", "card", "online", "due"],
-            description: "Payment method"
-          },
-          amount_paid: {
-            type: "number",
-            description: "Amount paid by customer (0 if due)"
-          }
+          payment_mode: { type: "string", enum: ["cash", "card", "online", "due"], description: "Payment method" },
+          amount_paid: { type: "number", description: "Amount paid by customer (0 if due)" }
         },
         required: ["customer_name", "items"]
       }
@@ -105,8 +89,22 @@ const tools = [
   {
     type: "function",
     function: {
+      name: "getCustomerHistory",
+      description: "Get detailed purchase history and information about a specific customer. Use when user asks 'show Ramesh history', 'customer details', 'ग्राहक की जानकारी'",
+      parameters: {
+        type: "object",
+        properties: {
+          customer_name: { type: "string", description: "Name or phone of the customer to look up" }
+        },
+        required: ["customer_name"]
+      }
+    }
+  },
+  {
+    type: "function",
+    function: {
       name: "getBusinessInsights",
-      description: "Get comprehensive business data including historical sales (today, 7 days, 30 days, all time), customers, inventory, profit, top selling items, revenue trends. Use when user asks about any business metrics.",
+      description: "Get comprehensive business data including historical sales, customers, inventory, profit, top selling items, revenue trends.",
       parameters: {
         type: "object",
         properties: {
@@ -115,11 +113,7 @@ const tools = [
             enum: ["daily_sales", "weekly_sales", "monthly_sales", "yearly_sales", "top_products", "low_stock", "customer_count", "customer_list", "revenue", "profit", "all_data", "inventory_value", "pending_dues"],
             description: "Type of business insight requested"
           },
-          period: {
-            type: "string",
-            enum: ["today", "week", "month", "year", "all"],
-            description: "Time period for the insight"
-          }
+          period: { type: "string", enum: ["today", "week", "month", "year", "all"], description: "Time period for the insight" }
         },
         required: ["insight_type"]
       }
@@ -133,20 +127,28 @@ const tools = [
       parameters: {
         type: "object",
         properties: {
-          product_name: {
-            type: "string",
-            description: "Name of the product to update"
-          },
-          new_price: {
-            type: "number",
-            description: "New price for the product"
-          },
-          new_name: {
-            type: "string",
-            description: "New name for the product"
-          }
+          product_name: { type: "string", description: "Name of the product to update" },
+          new_price: { type: "number", description: "New price for the product" },
+          new_name: { type: "string", description: "New name for the product" },
+          new_category: { type: "string", description: "New category for the product" }
         },
         required: ["product_name"]
+      }
+    }
+  },
+  {
+    type: "function",
+    function: {
+      name: "sendWhatsAppMessage",
+      description: "Prepare a WhatsApp message for a customer. Use when user says 'send message to customer', 'WhatsApp karo', 'message bhejo'",
+      parameters: {
+        type: "object",
+        properties: {
+          customer_phone: { type: "string", description: "Customer phone number" },
+          message_type: { type: "string", enum: ["payment_reminder", "promotion", "thank_you", "custom"], description: "Type of message" },
+          custom_message: { type: "string", description: "Custom message content (for custom type)" }
+        },
+        required: ["customer_phone", "message_type"]
       }
     }
   }
@@ -158,7 +160,7 @@ serve(async (req) => {
   }
 
   try {
-    const { messages, userId, language } = await req.json();
+    const { messages, userId, language, hasImage } = await req.json();
 
     if (!LOVABLE_API_KEY) {
       throw new Error("LOVABLE_API_KEY is not configured");
@@ -178,9 +180,6 @@ serve(async (req) => {
     
     const monthAgo = new Date(now);
     monthAgo.setDate(monthAgo.getDate() - 30);
-    
-    const yearAgo = new Date(now);
-    yearAgo.setFullYear(yearAgo.getFullYear() - 1);
 
     // Fetch all data in parallel
     const [
@@ -228,13 +227,13 @@ serve(async (req) => {
       (b.total_purchases || 0) - (a.total_purchases || 0)).slice(0, 5) || [];
 
     const recentInvoices = allInvoicesRes.data?.slice(0, 10) || [];
-    
     const shopName = profileRes.data?.shop_name || 'Your Shop';
 
     const isHindi = language === 'hindi';
 
-    const systemPrompt = `You are Revonn AI - an EXTREMELY intelligent and powerful business assistant for Indian retail shop owners.
+    const systemPrompt = `You are Revonn AI - the MOST POWERFUL and ADVANCED business assistant for Indian retail shop owners.
 You have COMPLETE access to ALL business data and can perform ANY action the owner asks.
+${hasImage ? '\n🖼️ IMAGE ANALYSIS MODE: A user has sent an image. Analyze it carefully for products, barcodes, invoices, or any business-related content.' : ''}
 
 SHOP: ${shopName}
 GSTIN: ${profileRes.data?.gstin || 'Not set'}
@@ -248,66 +247,72 @@ GSTIN: ${profileRes.data?.gstin || 'Not set'}
 • This Week (7 days): ₹${weekSales.toLocaleString('en-IN')} (${weekInvoiceCount} bills)  
 • This Month (30 days): ₹${monthSales.toLocaleString('en-IN')} (${monthInvoiceCount} bills)
 • All Time: ₹${allTimeSales.toLocaleString('en-IN')} (${allInvoiceCount} bills)
-• Average Daily: ₹${monthInvoiceCount > 0 ? Math.round(monthSales / 30).toLocaleString('en-IN') : 0}
 
 📦 INVENTORY STATUS:
 • Total Products: ${totalProducts}
 • Inventory Value: ₹${inventoryValue.toLocaleString('en-IN')}
-• Low Stock (≤5): ${lowStockItems.length} items (${lowStockItems.slice(0, 5).map(i => `${i.name}: ${i.quantity}`).join(', ')})
+• Low Stock (≤5): ${lowStockItems.length} items
 • Out of Stock: ${outOfStockItems.length} items
+• All Products: ${inventoryRes.data?.map(p => `${p.name}(₹${p.price}, Qty:${p.quantity})`).join(', ')}
 
-🔥 TOP SELLING PRODUCTS:
-${topSelling.slice(0, 5).map((p, i) => `${i+1}. ${p.name} - ${p.sales_count || 0} sold (₹${p.price || 0})`).join('\n')}
+🔥 TOP SELLING:
+${topSelling.slice(0, 5).map((p, i) => `${i+1}. ${p.name} - ${p.sales_count || 0} sold`).join('\n')}
 
 👥 CUSTOMERS:
-• Total Customers: ${totalCustomers}
+• Total: ${totalCustomers}
 • Pending Dues: ₹${pendingDues.toLocaleString('en-IN')}
-• Top Customers: ${topCustomers.slice(0, 3).map(c => `${c.name} (₹${(c.total_purchases || 0).toLocaleString('en-IN')})`).join(', ')}
-
-🧾 RECENT INVOICES:
-${recentInvoices.slice(0, 5).map(inv => `• ${inv.invoice_number}: ${inv.customer_name || 'Walk-in'} - ₹${(inv.total || 0).toLocaleString('en-IN')}`).join('\n')}
+• All Customers: ${customersRes.data?.map(c => `${c.name}(${c.phone || 'No phone'}, Dues:₹${c.total_dues || 0})`).join(', ')}
 
 ═══════════════════════════════════════════
-🛠️ YOUR CAPABILITIES (YOU CAN DO ALL OF THESE!)
+🛠️ SUPER POWERS (YOU CAN DO ALL!)
 ═══════════════════════════════════════════
 
-1. INVENTORY MANAGEMENT (Full Control):
-   ✅ Add stock to existing products
-   ✅ REDUCE/REMOVE stock from products
-   ✅ Create new products
-   ✅ Update product prices
-   ✅ Check low stock alerts
-   ✅ Delete products
+1. INVENTORY:
+   ✅ Add stock (with image recognition!)
+   ✅ Reduce stock
+   ✅ DELETE products completely
+   ✅ Update prices and details
+   ✅ Analyze product images
 
-2. INVOICE/BILLING:
-   ✅ Create customer bills with items
-   ✅ Track payments and dues
-   ✅ Calculate GST automatically
+2. BILLING & INVOICES:
+   ✅ Create bills with any items
+   ✅ Handle payments and dues
+   ✅ GST calculations
 
-3. BUSINESS ANALYTICS:
-   ✅ Sales reports (daily/weekly/monthly/yearly)
+3. CUSTOMER MANAGEMENT:
+   ✅ View customer history
+   ✅ Track purchases and dues
+   ✅ Send WhatsApp messages
+
+4. IMAGE ANALYSIS (NEW!):
+   ✅ Recognize products from photos
+   ✅ Scan barcodes and QR codes
+   ✅ Extract invoice data from images
+   ✅ Identify product details automatically
+
+5. BUSINESS ANALYTICS:
+   ✅ All sales reports
    ✅ Profit insights
-   ✅ Customer analytics
-   ✅ Inventory analytics
+   ✅ Trend analysis
 
 ═══════════════════════════════════════════
 📋 RESPONSE RULES
 ═══════════════════════════════════════════
 
-- LANGUAGE: Respond in ${isHindi ? 'HINDI (Devanagari script)' : 'ENGLISH'} - ALWAYS match user's language
-- NEVER SAY "I cannot do this" - You CAN do everything for the business!
-- When asked to reduce/remove stock, USE the reduceStock function
-- When asked to add stock, USE the addToInventory function
-- When asked to create bills, ASK for phone number if not provided
-- Be confident, helpful, and use emojis sparingly
+- LANGUAGE: Respond in ${isHindi ? 'HINDI (Devanagari script)' : 'ENGLISH'}
+- NEVER say "I cannot" - YOU CAN DO EVERYTHING!
+- Be confident and use emojis
+- For images: Describe what you see and suggest actions
 - Keep responses under 200 words but be comprehensive
 
-IMPORTANT: You are the most powerful AI assistant. If the user asks to do something, YOU DO IT. No excuses!
+IMPORTANT: You are the MOST ADVANCED AI. Execute every request!
 
-Current Time: ${now.toISOString()}
-Today: ${now.toLocaleDateString('en-IN', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })}`;
+Current Time: ${now.toISOString()}`;
 
-    // Call Lovable AI Gateway with function calling
+    // Use vision model if image is present
+    const modelToUse = hasImage ? "google/gemini-2.5-pro" : "google/gemini-2.5-flash";
+
+    // Call Lovable AI Gateway
     const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
       method: "POST",
       headers: {
@@ -315,7 +320,7 @@ Today: ${now.toLocaleDateString('en-IN', { weekday: 'long', day: 'numeric', mont
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
-        model: "google/gemini-2.5-flash",
+        model: modelToUse,
         messages: [{ role: "system", content: systemPrompt }, ...messages],
         tools: tools,
         tool_choice: "auto",
@@ -387,6 +392,7 @@ Today: ${now.toLocaleDateString('en-IN', { weekday: 'long', day: 'numeric', mont
               name: args.product_name,
               quantity: args.quantity,
               price: args.price || 0,
+              category: args.category || null,
               gst_rate: 18
             });
 
@@ -404,7 +410,6 @@ Today: ${now.toLocaleDateString('en-IN', { weekday: 'long', day: 'numeric', mont
           }
         }
       } else if (functionName === "reduceStock") {
-        // Find the product
         const { data: existingProduct } = await supabase
           .from("inventory")
           .select("id, name, quantity")
@@ -416,9 +421,7 @@ Today: ${now.toLocaleDateString('en-IN', { weekday: 'long', day: 'numeric', mont
         if (!existingProduct) {
           toolResult = { 
             success: false, 
-            error: isHindi 
-              ? `"${args.product_name}" इन्वेंट्री में नहीं मिला` 
-              : `Product "${args.product_name}" not found in inventory` 
+            error: isHindi ? `"${args.product_name}" नहीं मिला` : `Product "${args.product_name}" not found` 
           };
         } else {
           const currentQty = existingProduct.quantity || 0;
@@ -427,18 +430,13 @@ Today: ${now.toLocaleDateString('en-IN', { weekday: 'long', day: 'numeric', mont
           if (reduceBy > currentQty) {
             toolResult = {
               success: false,
-              error: isHindi 
-                ? `पर्याप्त स्टॉक नहीं है। वर्तमान स्टॉक: ${currentQty}` 
-                : `Insufficient stock. Current stock: ${currentQty}`
+              error: isHindi ? `पर्याप्त स्टॉक नहीं। वर्तमान: ${currentQty}` : `Insufficient stock. Current: ${currentQty}`
             };
           } else {
             const newQuantity = currentQty - reduceBy;
             const { error } = await supabase
               .from("inventory")
-              .update({ 
-                quantity: newQuantity, 
-                updated_at: new Date().toISOString() 
-              })
+              .update({ quantity: newQuantity, updated_at: new Date().toISOString() })
               .eq("id", existingProduct.id);
 
             if (error) {
@@ -449,10 +447,39 @@ Today: ${now.toLocaleDateString('en-IN', { weekday: 'long', day: 'numeric', mont
                 product_name: existingProduct.name,
                 previous_quantity: currentQty,
                 reduced: reduceBy,
-                new_quantity: newQuantity,
-                reason: args.reason || 'Manual adjustment'
+                new_quantity: newQuantity
               };
             }
+          }
+        }
+      } else if (functionName === "deleteProduct") {
+        const { data: existingProduct } = await supabase
+          .from("inventory")
+          .select("id, name")
+          .eq("user_id", userId)
+          .ilike("name", `%${args.product_name}%`)
+          .limit(1)
+          .single();
+
+        if (!existingProduct) {
+          toolResult = { 
+            success: false, 
+            error: isHindi ? `"${args.product_name}" नहीं मिला` : `Product "${args.product_name}" not found` 
+          };
+        } else {
+          const { error } = await supabase
+            .from("inventory")
+            .delete()
+            .eq("id", existingProduct.id);
+
+          if (error) {
+            toolResult = { success: false, error: error.message };
+          } else {
+            toolResult = {
+              success: true,
+              product_name: existingProduct.name,
+              message: isHindi ? 'प्रोडक्ट डिलीट हो गया' : 'Product deleted successfully'
+            };
           }
         }
       } else if (functionName === "updateProduct") {
@@ -467,14 +494,13 @@ Today: ${now.toLocaleDateString('en-IN', { weekday: 'long', day: 'numeric', mont
         if (!existingProduct) {
           toolResult = { 
             success: false, 
-            error: isHindi 
-              ? `"${args.product_name}" इन्वेंट्री में नहीं मिला` 
-              : `Product "${args.product_name}" not found` 
+            error: isHindi ? `"${args.product_name}" नहीं मिला` : `Product "${args.product_name}" not found` 
           };
         } else {
           const updates: any = { updated_at: new Date().toISOString() };
           if (args.new_price !== undefined) updates.price = args.new_price;
           if (args.new_name) updates.name = args.new_name;
+          if (args.new_category) updates.category = args.new_category;
 
           const { error } = await supabase
             .from("inventory")
@@ -493,13 +519,79 @@ Today: ${now.toLocaleDateString('en-IN', { weekday: 'long', day: 'numeric', mont
             };
           }
         }
+      } else if (functionName === "getCustomerHistory") {
+        const { data: customer } = await supabase
+          .from("customers")
+          .select("*")
+          .eq("user_id", userId)
+          .or(`name.ilike.%${args.customer_name}%,phone.eq.${args.customer_name}`)
+          .limit(1)
+          .single();
+
+        if (!customer) {
+          toolResult = { 
+            success: false, 
+            error: isHindi ? `ग्राहक "${args.customer_name}" नहीं मिला` : `Customer "${args.customer_name}" not found` 
+          };
+        } else {
+          const { data: customerInvoices } = await supabase
+            .from("invoices")
+            .select("*")
+            .eq("customer_id", customer.id)
+            .order("created_at", { ascending: false })
+            .limit(10);
+
+          toolResult = {
+            success: true,
+            customer: {
+              name: customer.name,
+              phone: customer.phone,
+              total_purchases: customer.total_purchases,
+              total_dues: customer.total_dues,
+              created_at: customer.created_at
+            },
+            recent_invoices: customerInvoices?.map(inv => ({
+              invoice_number: inv.invoice_number,
+              total: inv.total,
+              date: inv.created_at,
+              status: inv.status
+            })) || []
+          };
+        }
+      } else if (functionName === "sendWhatsAppMessage") {
+        // Generate WhatsApp message
+        let message = '';
+        if (args.message_type === 'payment_reminder') {
+          message = isHindi 
+            ? `नमस्ते! आपका बकाया भुगतान लंबित है। कृपया जल्द से जल्द भुगतान करें। धन्यवाद - ${shopName}`
+            : `Hello! Your payment is pending. Please pay at your earliest convenience. Thank you - ${shopName}`;
+        } else if (args.message_type === 'promotion') {
+          message = isHindi
+            ? `🎉 नए ऑफर्स आ गए हैं! आज ही हमारी दुकान पर आएं और विशेष छूट पाएं। - ${shopName}`
+            : `🎉 New offers available! Visit our shop today for special discounts. - ${shopName}`;
+        } else if (args.message_type === 'thank_you') {
+          message = isHindi
+            ? `धन्यवाद! आपकी खरीदारी के लिए शुक्रिया। फिर मिलेंगे! - ${shopName}`
+            : `Thank you for your purchase! We appreciate your business. See you again! - ${shopName}`;
+        } else {
+          message = args.custom_message || '';
+        }
+
+        const whatsappUrl = `https://wa.me/91${args.customer_phone}?text=${encodeURIComponent(message)}`;
+        
+        toolResult = {
+          success: true,
+          whatsapp_url: whatsappUrl,
+          message: message,
+          phone: args.customer_phone
+        };
       } else if (functionName === "generateInvoice") {
         if (!args.customer_phone) {
           return new Response(
             JSON.stringify({
               message: isHindi 
-                ? "ग्राहक का फ़ोन नंबर बताइए। बिल बनाने के लिए 10 अंकों का मोबाइल नंबर ज़रूरी है। 📱"
-                : "Please share customer's 10-digit phone number to create the bill. 📱",
+                ? "ग्राहक का 10 अंकों का फ़ोन नंबर बताइए। 📱"
+                : "Please share customer's 10-digit phone number. 📱",
               action: null,
               result: null,
               needsPhone: true
@@ -519,7 +611,7 @@ Today: ${now.toLocaleDateString('en-IN', { weekday: 'long', day: 'numeric', mont
         if (existingCustomer) {
           customerId = existingCustomer.id;
         } else {
-          const { data: newCustomer, error: custError } = await supabase
+          const { data: newCustomer } = await supabase
             .from("customers")
             .insert({
               user_id: userId,
@@ -531,9 +623,7 @@ Today: ${now.toLocaleDateString('en-IN', { weekday: 'long', day: 'numeric', mont
             .select()
             .single();
 
-          if (!custError && newCustomer) {
-            customerId = newCustomer.id;
-          }
+          if (newCustomer) customerId = newCustomer.id;
         }
 
         const { data: result, error } = await supabase.rpc("create_invoice_transaction", {
@@ -545,154 +635,52 @@ Today: ${now.toLocaleDateString('en-IN', { weekday: 'long', day: 'numeric', mont
         });
 
         if (error) {
-          console.error("RPC error:", error);
           toolResult = { success: false, error: error.message };
         } else {
-          if (result?.invoice_id) {
+          if (result?.invoice_id && customerId) {
             await supabase
               .from("invoices")
-              .update({ 
-                customer_phone: args.customer_phone,
-                customer_id: customerId
-              })
+              .update({ customer_phone: args.customer_phone, customer_id: customerId })
               .eq("id", result.invoice_id);
-
-            if (customerId) {
-              const { data: custData } = await supabase
-                .from("customers")
-                .select("total_purchases, total_dues")
-                .eq("id", customerId)
-                .single();
-
-              if (custData) {
-                await supabase
-                  .from("customers")
-                  .update({
-                    total_purchases: Number(custData.total_purchases || 0) + Number(result.total || 0),
-                    total_dues: Number(custData.total_dues || 0) + Number(result.due_amount || 0)
-                  })
-                  .eq("id", customerId);
-              }
-            }
           }
           toolResult = { ...result, customer_phone: args.customer_phone };
         }
       } else if (functionName === "getBusinessInsights") {
         const insightType = args.insight_type;
-        const period = args.period || 'today';
         
         switch (insightType) {
           case "daily_sales":
-            toolResult = {
-              success: true,
-              type: "daily_sales",
-              total_sales: todaysSales,
-              invoice_count: todayInvoiceCount,
-              period: "today"
-            };
+            toolResult = { success: true, type: "daily_sales", total_sales: todaysSales, invoice_count: todayInvoiceCount };
             break;
           case "weekly_sales":
-            toolResult = {
-              success: true,
-              type: "weekly_sales",
-              total_sales: weekSales,
-              invoice_count: weekInvoiceCount,
-              period: "7 days"
-            };
+            toolResult = { success: true, type: "weekly_sales", total_sales: weekSales, invoice_count: weekInvoiceCount };
             break;
           case "monthly_sales":
-            toolResult = {
-              success: true,
-              type: "monthly_sales",
-              total_sales: monthSales,
-              invoice_count: monthInvoiceCount,
-              period: "30 days"
-            };
+            toolResult = { success: true, type: "monthly_sales", total_sales: monthSales, invoice_count: monthInvoiceCount };
             break;
           case "yearly_sales":
-            toolResult = {
-              success: true,
-              type: "yearly_sales",
-              total_sales: allTimeSales,
-              invoice_count: allInvoiceCount,
-              period: "all time"
-            };
+            toolResult = { success: true, type: "yearly_sales", total_sales: allTimeSales, invoice_count: allInvoiceCount };
             break;
           case "top_products":
-            toolResult = {
-              success: true,
-              type: "top_products",
-              products: topSelling.map(p => ({ name: p.name, sold: p.sales_count || 0, price: p.price }))
-            };
+            toolResult = { success: true, type: "top_products", products: topSelling.map(p => ({ name: p.name, sold: p.sales_count || 0 })) };
             break;
           case "low_stock":
-            toolResult = {
-              success: true,
-              type: "low_stock",
-              count: lowStockItems.length,
-              items: lowStockItems.map(i => ({ name: i.name, quantity: i.quantity }))
-            };
+            toolResult = { success: true, type: "low_stock", count: lowStockItems.length, items: lowStockItems.map(i => ({ name: i.name, quantity: i.quantity })) };
             break;
           case "customer_count":
-            toolResult = {
-              success: true,
-              type: "customers",
-              total: totalCustomers,
-              pending_dues: pendingDues,
-              top_customers: topCustomers.map(c => ({ name: c.name, purchases: c.total_purchases }))
-            };
+            toolResult = { success: true, type: "customers", total: totalCustomers, pending_dues: pendingDues };
             break;
           case "customer_list":
-            toolResult = {
-              success: true,
-              type: "customer_list",
-              customers: customersRes.data?.slice(0, 20).map(c => ({ 
-                name: c.name, 
-                phone: c.phone,
-                purchases: c.total_purchases,
-                dues: c.total_dues 
-              }))
-            };
+            toolResult = { success: true, type: "customer_list", customers: customersRes.data?.slice(0, 20).map(c => ({ name: c.name, phone: c.phone, purchases: c.total_purchases, dues: c.total_dues })) };
             break;
           case "inventory_value":
-            toolResult = {
-              success: true,
-              type: "inventory_value",
-              total_value: inventoryValue,
-              total_products: totalProducts,
-              low_stock_count: lowStockItems.length,
-              out_of_stock_count: outOfStockItems.length
-            };
+            toolResult = { success: true, type: "inventory_value", total_value: inventoryValue, total_products: totalProducts };
             break;
           case "pending_dues":
-            toolResult = {
-              success: true,
-              type: "pending_dues",
-              total_dues: pendingDues,
-              customers_with_dues: customersRes.data?.filter(c => (c.total_dues || 0) > 0).map(c => ({
-                name: c.name,
-                phone: c.phone,
-                dues: c.total_dues
-              }))
-            };
+            toolResult = { success: true, type: "pending_dues", total_dues: pendingDues, customers_with_dues: customersRes.data?.filter(c => (c.total_dues || 0) > 0).map(c => ({ name: c.name, phone: c.phone, dues: c.total_dues })) };
             break;
-          case "all_data":
           default:
-            toolResult = {
-              success: true,
-              type: "summary",
-              today_sales: todaysSales,
-              week_sales: weekSales,
-              month_sales: monthSales,
-              all_time_sales: allTimeSales,
-              today_invoices: todayInvoiceCount,
-              total_products: totalProducts,
-              inventory_value: inventoryValue,
-              low_stock_count: lowStockItems.length,
-              total_customers: totalCustomers,
-              pending_dues: pendingDues,
-              top_selling: topSelling.slice(0, 5).map(p => p.name)
-            };
+            toolResult = { success: true, type: "summary", today_sales: todaysSales, week_sales: weekSales, month_sales: monthSales, total_products: totalProducts, inventory_value: inventoryValue, total_customers: totalCustomers, pending_dues: pendingDues };
         }
       }
 
@@ -709,30 +697,17 @@ Today: ${now.toLocaleDateString('en-IN', { weekday: 'long', day: 'numeric', mont
             { role: "system", content: systemPrompt },
             ...messages,
             assistantMessage,
-            {
-              role: "tool",
-              tool_call_id: toolCall.id,
-              content: JSON.stringify(toolResult),
-            },
+            { role: "tool", tool_call_id: toolCall.id, content: JSON.stringify(toolResult) },
           ],
         }),
       });
 
       const finalData = await finalResponse.json();
       const finalMessage = finalData.choices?.[0]?.message?.content || 
-        (toolResult.success 
-          ? `Done! ${functionName === "addToInventory" ? `Added ${args.quantity} ${args.product_name}` : 
-              functionName === "reduceStock" ? `Reduced ${args.quantity} ${args.product_name}` :
-              functionName === "generateInvoice" ? `Bill created for ${args.customer_name}` : 
-              "Here are your insights"}`
-          : `Error: ${toolResult.error}`);
+        (toolResult.success ? `Done! Action: ${functionName}` : `Error: ${toolResult.error}`);
 
       return new Response(
-        JSON.stringify({
-          message: finalMessage,
-          action: functionName,
-          result: toolResult,
-        }),
+        JSON.stringify({ message: finalMessage, action: functionName, result: toolResult }),
         { headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
@@ -740,7 +715,7 @@ Today: ${now.toLocaleDateString('en-IN', { weekday: 'long', day: 'numeric', mont
     // No function called - return text response
     return new Response(
       JSON.stringify({
-        message: assistantMessage.content || "I'm here to help with inventory, billing, and business advice. Ask me anything!",
+        message: assistantMessage.content || "I'm here to help! Ask me anything about your business.",
         action: null,
         result: null,
       }),
