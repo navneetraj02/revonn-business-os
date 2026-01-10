@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect } from 'react';
-import { X, Send, Mic, MicOff, Sparkles, Loader2, Maximize2, Minimize2 } from 'lucide-react';
+import { X, Send, Mic, MicOff, Sparkles, Loader2, Maximize2, Minimize2, Image, Camera, FileVideo } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { useAppStore } from '@/store/app-store';
 import { useVoiceRecognition, speakText } from '@/hooks/useVoiceRecognition';
@@ -10,6 +10,12 @@ import { toast } from 'sonner';
 import { useLanguage } from '@/contexts/LanguageContext';
 
 const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL;
+
+interface ImageAttachment {
+  base64: string;
+  type: string;
+  name: string;
+}
 
 export function AIAssistant() {
   const navigate = useNavigate();
@@ -22,15 +28,17 @@ export function AIAssistant() {
       id: '1',
       role: 'assistant',
       content: isHindi 
-        ? "नमस्ते! मैं रेवॉन AI हूं, आपका बिज़नेस असिस्टेंट। 👋\n\nमैं आपकी मदद कर सकता हूं:\n\n• स्टॉक जोड़ना (\"50 keyboards जोड़ो\")\n• बिल बनाना (\"रमेश के लिए 2 कुर्ती का बिल बनाओ\")\n• बिक्री रिपोर्ट (\"आज/7 दिन/30 दिन की बिक्री\")\n• ग्राहक जानकारी\n• मार्केटिंग टिप्स\n• GST सहायता\n\nबोलिए या टाइप कीजिए!"
-        : "Hi! I'm Revonn AI, your business assistant. 👋\n\nI can help you with:\n\n• Adding stock (\"Add 50 keyboards\")\n• Creating bills (\"Create bill for Ramesh 2 kurti\")\n• Sales reports (\"Today/7 days/30 days sales\")\n• Customer information\n• Marketing tips\n• GST assistance\n\nSpeak or type!",
+        ? "नमस्ते! मैं रेवॉन AI हूं, आपका सुपर एडवांस बिज़नेस असिस्टेंट। 👋\n\n🖼️ **नया फीचर!** अब आप मुझे इमेज/वीडियो भेज सकते हैं और मैं:\n• प्रोडक्ट की तस्वीर से इन्वेंट्री में जोड़ सकता हूं\n• इनवॉइस स्कैन करके बिल बना सकता हूं\n• बारकोड/QR कोड पढ़ सकता हूं\n\nबोलिए, टाइप कीजिए, या फोटो भेजिए!"
+        : "Hi! I'm Revonn AI, your super advanced business assistant. 👋\n\n🖼️ **New Feature!** You can now send me images/videos and I can:\n• Add products from photos to inventory\n• Scan invoices and create bills\n• Read barcodes/QR codes\n\nSpeak, type, or send a photo!",
       timestamp: new Date()
     }
   ]);
   const [input, setInput] = useState('');
   const [isLoading, setIsLoading] = useState(false);
+  const [imageAttachment, setImageAttachment] = useState<ImageAttachment | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const { isListening, isSupported, transcript, toggleListening, stopListening } = useVoiceRecognition({
     lang: isHindi ? 'hi-IN' : 'en-IN',
@@ -60,24 +68,101 @@ export function AIAssistant() {
     return hindiPattern.test(text) ? 'hindi' : 'english';
   };
 
+  const handleImageSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    // Check file size (max 5MB)
+    if (file.size > 5 * 1024 * 1024) {
+      toast.error(isHindi ? 'फाइल 5MB से छोटी होनी चाहिए' : 'File must be less than 5MB');
+      return;
+    }
+
+    // Check file type
+    const validTypes = ['image/jpeg', 'image/png', 'image/gif', 'image/webp', 'video/mp4', 'video/webm'];
+    if (!validTypes.includes(file.type)) {
+      toast.error(isHindi ? 'केवल JPG, PNG, GIF, WebP या MP4 फाइल' : 'Only JPG, PNG, GIF, WebP or MP4 files');
+      return;
+    }
+
+    // Convert to base64
+    const reader = new FileReader();
+    reader.onload = () => {
+      const base64 = reader.result as string;
+      setImageAttachment({
+        base64: base64.split(',')[1], // Remove data:image/...;base64, prefix
+        type: file.type,
+        name: file.name
+      });
+      toast.success(isHindi ? 'फाइल जोड़ी गई' : 'File attached');
+    };
+    reader.readAsDataURL(file);
+  };
+
+  const handleCameraCapture = () => {
+    if (fileInputRef.current) {
+      fileInputRef.current.accept = 'image/*';
+      fileInputRef.current.capture = 'environment';
+      fileInputRef.current.click();
+    }
+  };
+
+  const handleGallerySelect = () => {
+    if (fileInputRef.current) {
+      fileInputRef.current.accept = 'image/*,video/*';
+      fileInputRef.current.removeAttribute('capture');
+      fileInputRef.current.click();
+    }
+  };
+
+  const clearAttachment = () => {
+    setImageAttachment(null);
+    if (fileInputRef.current) {
+      fileInputRef.current.value = '';
+    }
+  };
+
   const handleSend = async (textToSend?: string) => {
     const messageText = textToSend || input.trim();
-    if (!messageText || isLoading) return;
+    if ((!messageText && !imageAttachment) || isLoading) return;
 
     const userMessage: AIMessage = {
       id: Date.now().toString(),
       role: 'user',
-      content: messageText,
-      timestamp: new Date()
+      content: messageText || (isHindi ? '📷 इमेज भेजी' : '📷 Image sent'),
+      timestamp: new Date(),
+      image: imageAttachment ? `data:${imageAttachment.type};base64,${imageAttachment.base64}` : undefined
     };
 
     setMessages(prev => [...prev, userMessage]);
     setInput('');
+    const currentAttachment = imageAttachment;
+    clearAttachment();
     setIsLoading(true);
 
     try {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) throw new Error('Not authenticated');
+
+      // Build message content with image if present
+      let messageContent: any = messageText || 'Analyze this image and help me with my business task.';
+      
+      if (currentAttachment) {
+        messageContent = [
+          {
+            type: 'text',
+            text: messageText || (isHindi 
+              ? 'इस इमेज को देखें और बताएं कि इसमें क्या है। अगर यह कोई प्रोडक्ट है तो उसकी जानकारी दें।' 
+              : 'Analyze this image and tell me what you see. If it is a product, provide its details.')
+          },
+          {
+            type: 'image_url',
+            image_url: {
+              url: `data:${currentAttachment.type};base64,${currentAttachment.base64}`
+            }
+          }
+        ];
+      }
 
       const response = await fetch(`${SUPABASE_URL}/functions/v1/chat-agent`, {
         method: 'POST',
@@ -91,10 +176,11 @@ export function AIAssistant() {
               role: m.role,
               content: m.content
             })),
-            { role: 'user', content: messageText }
+            { role: 'user', content: messageContent }
           ],
           userId: user.id,
-          language: detectLanguage(messageText)
+          language: detectLanguage(messageText || ''),
+          hasImage: !!currentAttachment
         })
       });
 
@@ -124,15 +210,19 @@ export function AIAssistant() {
             ? `बिल ${data.result.invoice_number} बनाया! कुल: ₹${data.result.total}`
             : `Invoice ${data.result.invoice_number} created! Total: ₹${data.result.total}`);
           setTimeout(() => { setIsAIOpen(false); navigate('/billing'); }, 2000);
+        } else if (data.action === 'deleteProduct') {
+          toast.success(isHindi 
+            ? `${data.result.product_name} डिलीट किया गया`
+            : `Deleted ${data.result.product_name}`);
         }
       }
       
-      const lang = detectLanguage(messageText);
+      const lang = detectLanguage(messageText || '');
       speakText(data.message.replace(/[*#\[\]{}]/g, '').slice(0, 500), lang === 'hindi' ? 'hi-IN' : 'en-IN');
 
     } catch (error) {
       console.error('AI error:', error);
-      const lang = detectLanguage(messageText);
+      const lang = detectLanguage(messageText || '');
       setMessages(prev => [...prev, {
         id: (Date.now() + 1).toString(),
         role: 'assistant',
@@ -149,21 +239,21 @@ export function AIAssistant() {
   const quickActions = isHindi ? [
     { label: 'आज की बिक्री?', icon: '📊' },
     { label: '7 दिन की बिक्री', icon: '📈' },
-    { label: '30 दिन की बिक्री', icon: '📉' },
     { label: 'कम स्टॉक', icon: '📦' },
     { label: 'बिल बनाओ', icon: '🧾' },
     { label: 'टॉप सेलिंग', icon: '🔥' },
-    { label: 'कुल ग्राहक', icon: '👥' },
-    { label: 'मार्केटिंग टिप', icon: '💡' }
+    { label: 'मार्केटिंग टिप', icon: '💡' },
+    { label: 'प्रोडक्ट डिलीट करो', icon: '🗑️' },
+    { label: 'ग्राहक हिस्ट्री', icon: '👤' }
   ] : [
     { label: "Today's sales?", icon: '📊' },
     { label: '7 day sales', icon: '📈' },
-    { label: '30 day sales', icon: '📉' },
     { label: 'Low stock', icon: '📦' },
     { label: 'Create bill', icon: '🧾' },
     { label: 'Top selling', icon: '🔥' },
-    { label: 'Total customers', icon: '👥' },
-    { label: 'Marketing tip', icon: '💡' }
+    { label: 'Marketing tip', icon: '💡' },
+    { label: 'Delete product', icon: '🗑️' },
+    { label: 'Customer history', icon: '👤' }
   ];
 
   if (!isAIOpen) return null;
@@ -187,7 +277,7 @@ export function AIAssistant() {
               <p className="text-xs text-muted-foreground">
                 {isListening 
                   ? (isHindi ? '🎤 सुन रहा हूं...' : '🎤 Listening...') 
-                  : (isHindi ? 'आवाज़ + टेक्स्ट • हिंदी/English' : 'Voice + Text • Hindi/English')}
+                  : (isHindi ? '🖼️ इमेज + आवाज़ + टेक्स्ट' : '🖼️ Image + Voice + Text')}
               </p>
             </div>
           </div>
@@ -215,6 +305,13 @@ export function AIAssistant() {
                 message.role === 'user' ? 'user-bubble' : 'ai-bubble',
                 'animate-scale-in max-w-[85%] shadow-md'
               )}>
+                {message.image && (
+                  <img 
+                    src={message.image} 
+                    alt="Attached" 
+                    className="max-w-full max-h-48 rounded-lg mb-2 object-cover"
+                  />
+                )}
                 <p className="text-sm whitespace-pre-wrap leading-relaxed">{message.content}</p>
               </div>
             </div>
@@ -247,6 +344,34 @@ export function AIAssistant() {
           ))}
         </div>
 
+        {/* Image Attachment Preview */}
+        {imageAttachment && (
+          <div className="px-4 py-2 border-t border-border/50">
+            <div className="relative inline-block">
+              <img 
+                src={`data:${imageAttachment.type};base64,${imageAttachment.base64}`}
+                alt="Attachment preview"
+                className="h-20 w-20 object-cover rounded-lg border border-border"
+              />
+              <button
+                onClick={clearAttachment}
+                className="absolute -top-2 -right-2 p-1 rounded-full bg-destructive text-destructive-foreground"
+              >
+                <X className="w-3 h-3" />
+              </button>
+            </div>
+          </div>
+        )}
+
+        {/* Hidden file input */}
+        <input
+          ref={fileInputRef}
+          type="file"
+          accept="image/*,video/*"
+          onChange={handleImageSelect}
+          className="hidden"
+        />
+
         {/* Input */}
         <div className="p-4 border-t border-border bg-card/50">
           {isListening && (
@@ -258,12 +383,31 @@ export function AIAssistant() {
               {transcript && <p className="text-xs text-muted-foreground mt-1">{transcript}</p>}
             </div>
           )}
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-2">
+            {/* Camera Button */}
+            <button
+              onClick={handleCameraCapture}
+              className="p-3 rounded-xl bg-secondary hover:bg-secondary/80 transition-all"
+              title={isHindi ? 'कैमरा' : 'Camera'}
+            >
+              <Camera className="w-5 h-5" />
+            </button>
+
+            {/* Gallery Button */}
+            <button
+              onClick={handleGallerySelect}
+              className="p-3 rounded-xl bg-secondary hover:bg-secondary/80 transition-all"
+              title={isHindi ? 'गैलरी' : 'Gallery'}
+            >
+              <Image className="w-5 h-5" />
+            </button>
+
+            {/* Voice Button */}
             {isSupported && (
               <button
                 onClick={toggleListening}
                 className={cn(
-                  'p-3.5 rounded-xl transition-all shadow-md',
+                  'p-3 rounded-xl transition-all shadow-md',
                   isListening 
                     ? 'bg-primary text-primary-foreground animate-pulse scale-110' 
                     : 'bg-secondary hover:bg-secondary/80'
@@ -272,20 +416,24 @@ export function AIAssistant() {
                 {isListening ? <MicOff className="w-5 h-5" /> : <Mic className="w-5 h-5" />}
               </button>
             )}
+
+            {/* Text Input */}
             <input
               ref={inputRef}
               type="text"
               value={input}
               onChange={(e) => setInput(e.target.value)}
               onKeyDown={(e) => e.key === 'Enter' && handleSend()}
-              placeholder={isHindi ? "टाइप करें या बोलें..." : "Type or speak..."}
+              placeholder={isHindi ? "टाइप करें..." : "Type a message..."}
               className="input-field flex-1 text-base py-3"
               disabled={isLoading}
             />
+
+            {/* Send Button */}
             <button 
               onClick={() => handleSend()} 
-              disabled={!input.trim() || isLoading} 
-              className="p-3.5 rounded-xl btn-gold disabled:opacity-50 transition-all shadow-md"
+              disabled={(!input.trim() && !imageAttachment) || isLoading} 
+              className="p-3 rounded-xl btn-gold disabled:opacity-50 transition-all shadow-md"
             >
               <Send className="w-5 h-5" />
             </button>
